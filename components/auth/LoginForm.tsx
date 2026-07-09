@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginSchema } from "../../lib/validators";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useNotification";
+import { auth } from "../../lib/firebase";
+import { RecaptchaVerifier } from "firebase/auth";
 import Button from "../common/Button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,12 +16,24 @@ import { z } from "zod";
 type LoginFormInputs = z.infer<typeof LoginSchema>;
 
 export default function LoginForm() {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, signInWithPhoneStart, signInWithPhoneConfirm } = useAuth();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
 
+  // Login Mode State
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
+
+  // Loading States
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Phone Login Specific States
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+
+  // Form for Email/Password
   const {
     register,
     handleSubmit,
@@ -28,7 +42,8 @@ export default function LoginForm() {
     resolver: zodResolver(LoginSchema),
   });
 
-  const onSubmit = async (data: LoginFormInputs) => {
+  // Handle standard Email Sign-In
+  const onSubmitEmail = async (data: LoginFormInputs) => {
     setLoading(true);
     try {
       const user = await signIn(data.email, data.password);
@@ -41,6 +56,7 @@ export default function LoginForm() {
     }
   };
 
+  // Handle Google Sign-In
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
@@ -54,65 +70,221 @@ export default function LoginForm() {
     }
   };
 
+  // Setup reCAPTCHA verifier for Phone Auth
+  const initRecaptcha = () => {
+    if (typeof window !== "undefined" && auth) {
+      try {
+        if (!(window as any).recaptchaVerifier) {
+          (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+            size: "invisible",
+            callback: () => {
+              // reCAPTCHA solved
+            },
+          });
+        }
+      } catch (err) {
+        console.warn("reCAPTCHA failed to load:", err);
+      }
+    }
+  };
+
+  // Send SMS Verification Code
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneNumber || phoneNumber.trim() === "") {
+      showToast("warning", "Phone Required", "Please enter a valid phone number starting with +.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      initRecaptcha();
+      const verifier = (window as any).recaptchaVerifier || null;
+      const confirmResult = await signInWithPhoneStart(phoneNumber, verifier);
+      setConfirmationResult(confirmResult);
+      setOtpSent(true);
+      showToast("success", "OTP Dispatched", `A 6-digit verification code was sent to ${phoneNumber}`);
+    } catch (e: any) {
+      showToast("error", "OTP Failed", e.message || "Failed to deliver SMS verification code.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Verify SMS OTP and Login
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.trim().length !== 6) {
+      showToast("warning", "Invalid Code", "Please enter the 6-digit OTP code.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = await signInWithPhoneConfirm(confirmationResult, otpCode, phoneNumber);
+      showToast("success", "Login Successful", `Welcome to CareFlow, ${user.name}!`);
+      router.push("/dashboard");
+    } catch (e: any) {
+      showToast("error", "Verification Failed", e.message || "Invalid OTP code entered.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 font-sans text-healthcare-textDark">
-      <div>
-        <label className="block text-sm font-bold text-healthcare-textDark mb-1">
-          Email Address
-        </label>
-        <input
-          type="email"
-          placeholder="admin@healthcare.com or doctor@healthcare.com"
-          className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary ${
-            errors.email ? "border-healthcare-error" : "border-healthcare-border"
+    <div className="space-y-4 font-sans text-healthcare-textDark">
+      {/* Login Method Toggle Tabs */}
+      <div className="flex border-b border-healthcare-border pb-2.5 gap-2">
+        <button
+          type="button"
+          onClick={() => { setLoginMethod("email"); setOtpSent(false); }}
+          className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider text-center rounded transition-all ${
+            loginMethod === "email"
+              ? "bg-blue-50 text-healthcare-primary border-b-2 border-healthcare-primary"
+              : "text-healthcare-textMedium hover:bg-healthcare-bgSecondary"
           }`}
-          {...register("email")}
-        />
-        {errors.email && (
-          <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.email.message}</p>
-        )}
+        >
+          Email & Password
+        </button>
+        <button
+          type="button"
+          onClick={() => { setLoginMethod("phone"); setOtpSent(false); }}
+          className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider text-center rounded transition-all ${
+            loginMethod === "phone"
+              ? "bg-blue-50 text-healthcare-primary border-b-2 border-healthcare-primary"
+              : "text-healthcare-textMedium hover:bg-healthcare-bgSecondary"
+          }`}
+        >
+          Phone SMS OTP
+        </button>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="block text-sm font-bold text-healthcare-textDark">
-            Password
-          </label>
-          <Link
-            href="/auth/forgot-password"
-            className="text-xs text-healthcare-accent hover:underline font-semibold"
-          >
-            Forgot Password?
-          </Link>
+      {/* Hidden reCAPTCHA anchor */}
+      <div id="recaptcha-container"></div>
+
+      {/* 1. Email/Password Form */}
+      {loginMethod === "email" && (
+        <form onSubmit={handleSubmit(onSubmitEmail)} className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              placeholder="admin@healthcare.com or doctor@healthcare.com"
+              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
+                errors.email ? "border-healthcare-error" : "border-healthcare-border"
+              }`}
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-bold text-healthcare-textDark">
+                Password
+              </label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-xs text-healthcare-accent hover:underline font-semibold"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+            <input
+              type="password"
+              placeholder="••••••••"
+              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
+                errors.password ? "border-healthcare-error" : "border-healthcare-border"
+              }`}
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.password.message}</p>
+            )}
+          </div>
+
+          <Button type="submit" variant="primary" fullWidth loading={loading}>
+            Sign In with Credentials
+          </Button>
+        </form>
+      )}
+
+      {/* 2. Phone SMS OTP Form */}
+      {loginMethod === "phone" && (
+        <div className="space-y-4">
+          {!otpSent ? (
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+                  Mobile Phone Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+919876543210 (Must include country code)"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-healthcare-border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white"
+                />
+                <p className="text-[10px] text-healthcare-textLight mt-1 font-medium">
+                  Enter your mobile phone starting with your country code (e.g., +91 for India, +1 for US).
+                </p>
+              </div>
+              <Button type="submit" variant="primary" fullWidth loading={loading}>
+                Send Verification Code (SMS)
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+                  Enter OTP Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="123456"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  className="w-full px-3 py-2 border border-healthcare-border rounded-standard text-sm text-center font-mono font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white"
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-[10px] text-healthcare-textMedium font-medium">
+                    Code sent to {phoneNumber} (Mock code is <span className="font-bold">123456</span>)
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setOtpSent(false)}
+                    className="text-[10px] text-healthcare-accent hover:underline font-bold"
+                  >
+                    Change Phone Number
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" variant="success" fullWidth loading={loading}>
+                Verify Code & Sign In
+              </Button>
+            </form>
+          )}
         </div>
-        <input
-          type="password"
-          placeholder="••••••••"
-          className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary ${
-            errors.password ? "border-healthcare-error" : "border-healthcare-border"
-          }`}
-          {...register("password")}
-        />
-        {errors.password && (
-          <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.password.message}</p>
-        )}
-      </div>
+      )}
 
-      <Button type="submit" variant="primary" fullWidth loading={loading}>
-        Sign In
-      </Button>
-
+      {/* Social login divider */}
       <div className="relative flex items-center justify-center my-4">
         <div className="flex-grow border-t border-healthcare-border"></div>
         <span className="flex-shrink mx-4 text-xs font-bold text-healthcare-textMedium uppercase">Or connect with</span>
         <div className="flex-grow border-t border-healthcare-border"></div>
       </div>
 
-      <Button 
-        type="button" 
-        onClick={handleGoogleSignIn} 
-        variant="outline" 
-        fullWidth 
+      {/* Google Login Button */}
+      <Button
+        type="button"
+        onClick={handleGoogleSignIn}
+        variant="outline"
+        fullWidth
         loading={googleLoading}
         className="gap-2"
       >
@@ -133,6 +305,6 @@ export default function LoginForm() {
           </Link>
         </p>
       </div>
-    </form>
+    </div>
   );
 }

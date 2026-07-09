@@ -5,7 +5,9 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "./firebase";
@@ -386,5 +388,77 @@ export const signInWithGoogle = async (): Promise<User> => {
     }
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
     return user;
+  }
+};
+
+export const sendPhoneOtp = async (phoneNumber: string, verifier: any): Promise<any> => {
+  if (isFirebaseConfigured && auth) {
+    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+    return confirmationResult;
+  } else {
+    // Mock Phone SMS code
+    console.log(`[Mock OTP] SMS verification code sent to ${phoneNumber}`);
+    return {
+      confirm: async (code: string) => {
+        if (code !== "123456") {
+          throw new Error("Invalid code. Enter '123456' to pass the mockup verification.");
+        }
+        const users = getLocalUsers();
+        let user = users.find(u => u.phone === phoneNumber);
+        if (!user) {
+          user = {
+            id: "mock-phone-" + Date.now(),
+            email: "phoneuser@healthcare.com",
+            name: "SMS User",
+            role: "patient",
+            phone: phoneNumber,
+            avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          users.push(user);
+          saveLocalUsers(users);
+        }
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+        return { user: { uid: user.id } };
+      }
+    };
+  }
+};
+
+export const verifyPhoneOtpProfile = async (uid: string, phoneNumber: string): Promise<User> => {
+  if (isFirebaseConfigured && db) {
+    const docRef = doc(db, "users", uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data() as User;
+    } else {
+      const userData: User = {
+        id: uid,
+        email: "phoneuser@healthcare.com",
+        name: "SMS User",
+        role: "patient",
+        phone: phoneNumber,
+        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await setDoc(docRef, userData);
+      await setDoc(doc(db, "patients", uid), {
+        id: uid,
+        userId: uid,
+        dob: "1990-01-01",
+        gender: "Male",
+        address: "Enter address",
+        medicalHistory: [],
+        allergies: [],
+        emergencyContact: { name: "", phone: "", relationship: "" },
+        createdAt: new Date().toISOString(),
+      });
+      return userData;
+    }
+  } else {
+    const users = getLocalUsers();
+    return users.find(u => u.phone === phoneNumber || u.id === uid) as User;
   }
 };
