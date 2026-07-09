@@ -1,0 +1,328 @@
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut, 
+  sendPasswordResetEmail,
+  onAuthStateChanged
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db, isFirebaseConfigured } from "./firebase";
+import { User, UserRole } from "../types";
+
+const USERS_KEY = "hms_users";
+const CURRENT_USER_KEY = "hms_current_user";
+const PASSWORDS_KEY = "hms_passwords";
+
+// Helpers
+export const getLocalUsers = (): User[] => {
+  if (typeof window === "undefined") return [];
+  const data = localStorage.getItem(USERS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+export const saveLocalUsers = (users: User[]) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+};
+
+export const getLocalCurrentUser = (): User | null => {
+  if (typeof window === "undefined") return null;
+  const data = localStorage.getItem(CURRENT_USER_KEY);
+  return data ? JSON.parse(data) : null;
+};
+
+// Seed demo users
+const ensureSeedUsers = () => {
+  if (typeof window === "undefined") return;
+  const users = getLocalUsers();
+  if (users.length === 0) {
+    const seed: User[] = [
+      {
+        id: "admin-1",
+        email: "admin@healthcare.com",
+        name: "Dr. Siddartha Reddy",
+        role: "admin",
+        phone: "9876543210",
+        avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "doctor-1",
+        email: "doctor@healthcare.com",
+        name: "Dr. Sarah Jenkins",
+        role: "doctor",
+        phone: "9876543211",
+        avatar: "https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=200",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "patient-1",
+        email: "patient@healthcare.com",
+        name: "John Doe",
+        role: "patient",
+        phone: "9876543212",
+        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+
+    const passwords = {
+      "admin@healthcare.com": "password123",
+      "doctor@healthcare.com": "password123",
+      "patient@healthcare.com": "password123"
+    };
+
+    localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
+    saveLocalUsers(seed);
+
+    // Seed empty patients list, doctors, etc. if empty
+    if (!localStorage.getItem("hms_patients")) {
+      localStorage.setItem("hms_patients", JSON.stringify([
+        {
+          id: "patient-1",
+          userId: "patient-1",
+          dob: "1990-05-15",
+          gender: "Male",
+          address: "123 Healthcare Ave, Medical City",
+          medicalHistory: ["Hypertension", "Mild Asthma"],
+          allergies: ["Penicillin"],
+          emergencyContact: {
+            name: "Jane Doe",
+            phone: "9876543215",
+            relationship: "Spouse"
+          },
+          createdAt: new Date().toISOString()
+        }
+      ]));
+    }
+
+    if (!localStorage.getItem("hms_doctors")) {
+      localStorage.setItem("hms_doctors", JSON.stringify([
+        {
+          id: "doctor-1",
+          userId: "doctor-1",
+          specialization: "Cardiology",
+          licenseNumber: "LIC123456",
+          experience: 12,
+          rating: 4.8,
+          availability: {
+            "Monday": [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
+            "Tuesday": [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
+            "Wednesday": [{ start: "09:00", end: "12:00" }],
+            "Thursday": [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
+            "Friday": [{ start: "09:00", end: "12:00" }]
+          },
+          consultationFee: 150,
+          bio: "Dr. Jenkins is a board-certified cardiologist with over 12 years of experience managing complex heart conditions."
+        }
+      ]));
+    }
+  }
+};
+
+if (typeof window !== "undefined") {
+  ensureSeedUsers();
+}
+
+// Authentication API methods
+export const signUp = async (email: string, password: string, name: string, phone: string, role: UserRole): Promise<User> => {
+  if (isFirebaseConfigured && auth && db) {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userId = userCredential.user.uid;
+    
+    const userData: User = {
+      id: userId,
+      email,
+      name,
+      phone,
+      role,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Store in Firestore
+    await setDoc(doc(db, "users", userId), userData);
+
+    // If roles require extra collection entries
+    if (role === "patient") {
+      await setDoc(doc(db, "patients", userId), {
+        id: userId,
+        userId,
+        dob: "",
+        gender: "",
+        address: "",
+        medicalHistory: [],
+        allergies: [],
+        emergencyContact: { name: "", phone: "", relationship: "" },
+        createdAt: new Date().toISOString(),
+      });
+    } else if (role === "doctor") {
+      await setDoc(doc(db, "doctors", userId), {
+        id: userId,
+        userId,
+        specialization: "General Medicine",
+        licenseNumber: "",
+        experience: 0,
+        rating: 5.0,
+        availability: {
+          "Monday": [{ start: "09:00", end: "17:00" }],
+          "Tuesday": [{ start: "09:00", end: "17:00" }],
+          "Wednesday": [{ start: "09:00", end: "17:00" }],
+          "Thursday": [{ start: "09:00", end: "17:00" }],
+          "Friday": [{ start: "09:00", end: "17:00" }]
+        },
+        consultationFee: 100,
+        bio: "",
+      });
+    }
+
+    return userData;
+  } else {
+    // Mock Signup
+    const users = getLocalUsers();
+    if (users.some(u => u.email === email)) {
+      throw new Error("Email already in use");
+    }
+
+    const userId = "mock-" + Math.random().toString(36).substr(2, 9);
+    const userData: User = {
+      id: userId,
+      email,
+      name,
+      phone,
+      role,
+      avatar: `https://images.unsplash.com/photo-${role === 'doctor' ? '1594824813573-246434de83fb' : '1535713875002-d1d0cf377fde'}?auto=format&fit=crop&q=80&w=200`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    users.push(userData);
+    saveLocalUsers(users);
+
+    const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
+    passwords[email] = password;
+    localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
+
+    // Seed empty extra records in localStorage
+    if (role === "patient") {
+      const patients = JSON.parse(localStorage.getItem("hms_patients") || "[]");
+      patients.push({
+        id: userId,
+        userId,
+        dob: "1990-01-01",
+        gender: "Male",
+        address: "Enter your address",
+        medicalHistory: [],
+        allergies: [],
+        emergencyContact: { name: "Contact Person", phone: "0000000000", relationship: "Relation" },
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem("hms_patients", JSON.stringify(patients));
+    } else if (role === "doctor") {
+      const doctors = JSON.parse(localStorage.getItem("hms_doctors") || "[]");
+      doctors.push({
+        id: userId,
+        userId,
+        specialization: "General Practice",
+        licenseNumber: "LIC-" + Math.floor(Math.random()*100000),
+        experience: 5,
+        rating: 5.0,
+        availability: {
+          "Monday": [{ start: "09:00", end: "17:00" }],
+          "Tuesday": [{ start: "09:00", end: "17:00" }],
+          "Wednesday": [{ start: "09:00", end: "17:00" }],
+          "Thursday": [{ start: "09:00", end: "17:00" }],
+          "Friday": [{ start: "09:00", end: "17:00" }]
+        },
+        consultationFee: 80,
+        bio: "Experienced general practitioner."
+      });
+      localStorage.setItem("hms_doctors", JSON.stringify(doctors));
+    }
+
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
+    return userData;
+  }
+};
+
+export const signIn = async (email: string, password: string): Promise<User> => {
+  if (isFirebaseConfigured && auth && db) {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userId = userCredential.user.uid;
+    const docRef = doc(db, "users", userId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      throw new Error("User record not found in Firestore database");
+    }
+    return docSnap.data() as User;
+  } else {
+    // Mock Login
+    const users = getLocalUsers();
+    const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
+    const user = users.find(u => u.email === email);
+    if (!user || passwords[email] !== password) {
+      throw new Error("Invalid email or password");
+    }
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    return user;
+  }
+};
+
+export const signOut = async (): Promise<void> => {
+  if (isFirebaseConfigured && auth) {
+    await firebaseSignOut(auth);
+  } else {
+    localStorage.removeItem(CURRENT_USER_KEY);
+  }
+};
+
+export const resetPassword = async (email: string): Promise<void> => {
+  if (isFirebaseConfigured && auth) {
+    await sendPasswordResetEmail(auth, email);
+  } else {
+    const users = getLocalUsers();
+    if (!users.some(u => u.email === email)) {
+      throw new Error("User with this email does not exist");
+    }
+    // Simulation: Log to console
+    console.log(`[Mock Reset] Password reset email sent to ${email}`);
+  }
+};
+
+export const subscribeToAuth = (callback: (user: User | null) => void): (() => void) => {
+  if (isFirebaseConfigured && auth && db) {
+    return onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        try {
+          const docSnap = await getDoc(doc(db, "users", fbUser.uid));
+          if (docSnap.exists()) {
+            callback(docSnap.data() as User);
+          } else {
+            callback(null);
+          }
+        } catch {
+          callback(null);
+        }
+      } else {
+        callback(null);
+      }
+    });
+  } else {
+    // Mock Listener
+    let lastUser = getLocalCurrentUser();
+    callback(lastUser);
+
+    const interval = setInterval(() => {
+      const currentUser = getLocalCurrentUser();
+      if (JSON.stringify(currentUser) !== JSON.stringify(lastUser)) {
+        lastUser = currentUser;
+        callback(currentUser);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }
+};

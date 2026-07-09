@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #F9FAFB;
+    color: #1F2937;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+    color: #1F2937;
+  }
+  pre, code {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom Calendar Styling for React Big Calendar */
+.rbc-calendar {
+  font-family: 'Inter', sans-serif;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  padding: 12px;
+}
+.rbc-event {
+  background-color: #3B82F6 !important;
+  color: white !important;
+  border-radius: 4px !important;
+  border: none !important;
+  font-size: 13px !important;
+  padding: 4px 6px !important;
+  font-weight: 500;
+}
+.rbc-event:hover {
+  background-color: #1E40AF !important;
+}
+.rbc-today {
+  background-color: #EFF6FF !important;
+}
+.rbc-header {
+  font-weight: 600 !important;
+  padding: 8px !important;
+  color: #4B5563 !important;
+  border-bottom: 2px solid #E5E7EB !important;
+}
+.rbc-off-range-bg {
+  background-color: #F3F4F6 !important;
+}
+
+/* Scrollbar customizations */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F1F1;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Print Invoice styles */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  /* Hide every part of the screen except the printable invoice container */
+  body > *:not(#print-area-wrapper) {
+    display: none !important;
+  }
+  #print-area-wrapper, #print-area-wrapper * {
+    visibility: visible !important;
+  }
+  #print-area-wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
