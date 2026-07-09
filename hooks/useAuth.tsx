@@ -7,7 +7,8 @@ import {
   signIn as apiSignIn, 
   signUp as apiSignUp, 
   signOut as apiSignOut, 
-  resetPassword as apiResetPassword 
+  resetPassword as apiResetPassword,
+  signInWithGoogle as apiSignInWithGoogle
 } from "../lib/auth";
 
 interface AuthContextType {
@@ -17,6 +18,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string, phone: string, role: UserRole) => Promise<User>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  signInWithGoogle: () => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,8 +77,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await apiResetPassword(email);
   };
 
+  const signInWithGoogle = async () => {
+    setLoading(true);
+    try {
+      const userResult = await apiSignInWithGoogle();
+      setUser(userResult);
+      return userResult;
+    } catch (e) {
+      setUser(null);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, resetPassword, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

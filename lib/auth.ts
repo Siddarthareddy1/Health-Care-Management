@@ -3,7 +3,9 @@ import {
   signInWithEmailAndPassword, 
   signOut as firebaseSignOut, 
   sendPasswordResetEmail,
-  onAuthStateChanged
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "./firebase";
@@ -324,5 +326,65 @@ export const subscribeToAuth = (callback: (user: User | null) => void): (() => v
     }, 1000);
 
     return () => clearInterval(interval);
+  }
+};
+
+export const signInWithGoogle = async (): Promise<User> => {
+  if (isFirebaseConfigured && auth && db) {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    const fbUser = result.user;
+    
+    const docRef = doc(db, "users", fbUser.uid);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return docSnap.data() as User;
+    } else {
+      const userData: User = {
+        id: fbUser.uid,
+        email: fbUser.email || "",
+        name: fbUser.displayName || "Google User",
+        role: "patient",
+        phone: fbUser.phoneNumber || "",
+        avatar: fbUser.photoURL || "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await setDoc(docRef, userData);
+      
+      // Seed patient profile
+      await setDoc(doc(db, "patients", fbUser.uid), {
+        id: fbUser.uid,
+        userId: fbUser.uid,
+        dob: "1990-01-01",
+        gender: "Male",
+        address: "Enter address",
+        medicalHistory: [],
+        allergies: [],
+        emergencyContact: { name: "", phone: "", relationship: "" },
+        createdAt: new Date().toISOString(),
+      });
+      
+      return userData;
+    }
+  } else {
+    // Mock Google Sign-In
+    const users = getLocalUsers();
+    let user = users.find(u => u.email === "patient@healthcare.com");
+    if (!user) {
+      user = {
+        id: "patient-1",
+        email: "patient@healthcare.com",
+        name: "John Doe",
+        role: "patient",
+        phone: "9876543212",
+        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    return user;
   }
 };
