@@ -66,11 +66,10 @@ export default function DashboardPage() {
     .filter(b => b.status === "paid")
     .reduce((sum, b) => sum + b.amount, 0);
 
-  const handleUpdateStatus = async (id: string, status: "scheduled" | "completed" | "cancelled") => {
-    if (status === "scheduled") return;
+  const handleUpdateStatus = async (id: string, status: "pending" | "approved" | "rejected" | "completed") => {
     try {
       await updateAppStatus(id, { status });
-      showToast("success", `Appointment ${status === 'completed' ? 'Completed' : 'Cancelled'}`, `Appointment status has been updated successfully.`);
+      showToast("success", "Status Updated", `Appointment status has been set to ${status}.`);
       refreshApps();
       refreshBills();
     } catch (e: any) {

@@ -132,37 +132,11 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="space-y-4 font-sans text-healthcare-textDark">
-      {/* Login Method Toggle Tabs */}
-      <div className="flex border-b border-healthcare-border pb-2.5 gap-2">
-        <button
-          type="button"
-          onClick={() => { setLoginMethod("email"); setOtpSent(false); }}
-          className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider text-center rounded transition-all ${
-            loginMethod === "email"
-              ? "bg-blue-50 text-healthcare-primary border-b-2 border-healthcare-primary"
-              : "text-healthcare-textMedium hover:bg-healthcare-bgSecondary"
-          }`}
-        >
-          Email & Password
-        </button>
-        <button
-          type="button"
-          onClick={() => { setLoginMethod("phone"); setOtpSent(false); }}
-          className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider text-center rounded transition-all ${
-            loginMethod === "phone"
-              ? "bg-blue-50 text-healthcare-primary border-b-2 border-healthcare-primary"
-              : "text-healthcare-textMedium hover:bg-healthcare-bgSecondary"
-          }`}
-        >
-          Phone SMS OTP
-        </button>
-      </div>
-
+    <div className="space-y-5 font-sans text-healthcare-textDark">
       {/* Hidden reCAPTCHA anchor */}
       <div id="recaptcha-container"></div>
 
-      {/* 1. Email/Password Form */}
+      {/* Email Login Method */}
       {loginMethod === "email" && (
         <form onSubmit={handleSubmit(onSubmitEmail)} className="space-y-4">
           <div>
@@ -172,7 +146,7 @@ export default function LoginForm() {
             <input
               type="email"
               placeholder="admin@healthcare.com or doctor@healthcare.com"
-              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
+              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white transition-all ${
                 errors.email ? "border-healthcare-error" : "border-healthcare-border"
               }`}
               {...register("email")}
@@ -197,7 +171,7 @@ export default function LoginForm() {
             <input
               type="password"
               placeholder="••••••••"
-              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
+              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white transition-all ${
                 errors.password ? "border-healthcare-error" : "border-healthcare-border"
               }`}
               {...register("password")}
@@ -208,12 +182,12 @@ export default function LoginForm() {
           </div>
 
           <Button type="submit" variant="primary" fullWidth loading={loading}>
-            Sign In with Credentials
+            Sign In
           </Button>
         </form>
       )}
 
-      {/* 2. Phone SMS OTP Form */}
+      {/* Phone OTP Login Method */}
       {loginMethod === "phone" && (
         <div className="space-y-4">
           {!otpSent ? (
@@ -227,14 +201,14 @@ export default function LoginForm() {
                   placeholder="+919876543210 (Must include country code)"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full px-3 py-2 border border-healthcare-border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white"
+                  className="w-full px-3 py-2 border border-healthcare-border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white transition-all"
                 />
                 <p className="text-[10px] text-healthcare-textLight mt-1 font-medium">
                   Enter your mobile phone starting with your country code (e.g., +91 for India, +1 for US).
                 </p>
               </div>
               <Button type="submit" variant="primary" fullWidth loading={loading}>
-                Send Verification Code (SMS)
+                Send Verification Code
               </Button>
             </form>
           ) : (
@@ -265,7 +239,7 @@ export default function LoginForm() {
                 </div>
               </div>
               <Button type="submit" variant="success" fullWidth loading={loading}>
-                Verify Code & Sign In
+                Verify OTP & Sign In
               </Button>
             </form>
           )}
@@ -279,23 +253,48 @@ export default function LoginForm() {
         <div className="flex-grow border-t border-healthcare-border"></div>
       </div>
 
-      {/* Google Login Button */}
-      <Button
-        type="button"
-        onClick={handleGoogleSignIn}
-        variant="outline"
-        fullWidth
-        loading={googleLoading}
-        className="gap-2"
-      >
-        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-        </svg>
-        Sign In with Google
-      </Button>
+      <div className="space-y-2">
+        {/* Google Login Button */}
+        <Button
+          type="button"
+          onClick={handleGoogleSignIn}
+          variant="outline"
+          fullWidth
+          loading={googleLoading}
+          className="gap-2 font-semibold"
+        >
+          <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+          </svg>
+          Continue with Google
+        </Button>
+
+        {/* Dynamic Alternative Sign-in Methods */}
+        {loginMethod === "email" ? (
+          <Button
+            type="button"
+            onClick={() => { setLoginMethod("phone"); setOtpSent(false); }}
+            variant="outline"
+            fullWidth
+            className="font-semibold"
+          >
+            Continue with Phone
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => { setLoginMethod("email"); setOtpSent(false); }}
+            variant="outline"
+            fullWidth
+            className="font-semibold"
+          >
+            Continue with Email & Password
+          </Button>
+        )}
+      </div>
 
       <div className="text-center pt-2">
         <p className="text-sm text-healthcare-textMedium">

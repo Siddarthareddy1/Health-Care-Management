@@ -22,12 +22,13 @@ export default function RecentAppointments({
 
   const getStatusBadge = (status: Appointment["status"]) => {
     const styles = {
-      scheduled: "bg-blue-50 text-healthcare-primary border border-blue-200",
+      pending: "bg-amber-50 text-healthcare-warning border border-amber-200",
+      approved: "bg-blue-50 text-healthcare-primary border border-blue-200",
       completed: "bg-emerald-50 text-healthcare-success border border-emerald-200",
-      cancelled: "bg-red-50 text-healthcare-error border border-red-200",
+      rejected: "bg-red-50 text-healthcare-error border border-red-200",
     };
     return (
-      <span className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider ${styles[status]}`}>
+      <span className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider ${styles[status] || ""}`}>
         {status}
       </span>
     );
@@ -52,7 +53,7 @@ export default function RecentAppointments({
             <th className="py-3 px-4">Date & Time</th>
             <th className="py-3 px-4">Reason</th>
             <th className="py-3 px-4">Status</th>
-            {onUpdateStatus && role !== "patient" && <th className="py-3 px-4 text-right">Actions</th>}
+            {onUpdateStatus && <th className="py-3 px-4 text-right">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-healthcare-border text-sm text-healthcare-textDark font-medium">
@@ -65,23 +66,59 @@ export default function RecentAppointments({
               </td>
               <td className="py-4 px-4 max-w-xs truncate text-healthcare-textMedium">{app.reason}</td>
               <td className="py-4 px-4">{getStatusBadge(app.status)}</td>
-              {onUpdateStatus && role !== "patient" && app.status === "scheduled" && (
+              {onUpdateStatus && (
                 <td className="py-4 px-4 text-right">
                   <div className="flex items-center justify-end gap-1.5">
-                    <button
-                      onClick={() => onUpdateStatus(app.id, "completed")}
-                      className="p-1.5 rounded-md bg-healthcare-success hover:bg-emerald-600 text-white shadow-subtle transition-all"
-                      title="Complete Appointment"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onUpdateStatus(app.id, "cancelled")}
-                      className="p-1.5 rounded-md bg-healthcare-error hover:bg-red-700 text-white shadow-subtle transition-all"
-                      title="Cancel Appointment"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    {/* Admin approving pending */}
+                    {role === "admin" && app.status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => onUpdateStatus(app.id, "approved")}
+                          className="p-1.5 rounded-md bg-healthcare-success hover:bg-emerald-600 text-white shadow-subtle transition-all"
+                          title="Approve Appointment"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onUpdateStatus(app.id, "rejected")}
+                          className="p-1.5 rounded-md bg-healthcare-error hover:bg-red-700 text-white shadow-subtle transition-all"
+                          title="Reject Appointment"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+
+                    {/* Doctor completing approved */}
+                    {role === "doctor" && app.status === "approved" && (
+                      <>
+                        <button
+                          onClick={() => onUpdateStatus(app.id, "completed")}
+                          className="p-1.5 rounded-md bg-healthcare-success hover:bg-emerald-600 text-white shadow-subtle transition-all"
+                          title="Complete Appointment"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onUpdateStatus(app.id, "rejected")}
+                          className="p-1.5 rounded-md bg-healthcare-error hover:bg-red-700 text-white shadow-subtle transition-all"
+                          title="Cancel Session"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+
+                    {/* Patient cancelling pending or approved */}
+                    {role === "patient" && (app.status === "pending" || app.status === "approved") && (
+                      <button
+                        onClick={() => onUpdateStatus(app.id, "rejected")}
+                        className="p-1 px-2.5 rounded bg-healthcare-error hover:bg-red-700 text-white shadow-subtle transition-all text-xs font-bold"
+                        title="Cancel Appointment"
+                      >
+                        Cancel
+                      </button>
+                    )}
                   </div>
                 </td>
               )}

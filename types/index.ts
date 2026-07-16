@@ -48,7 +48,7 @@ export interface Appointment {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   reason: string;
-  status: "scheduled" | "completed" | "cancelled";
+  status: "pending" | "approved" | "rejected" | "completed";
   notes?: string;
   fee: number;
   createdAt: string;

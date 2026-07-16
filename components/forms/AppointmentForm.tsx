@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AppointmentSchema } from "../../lib/validators";
-import { useDoctors, useAppointments } from "../../hooks/useFirestore";
+import { useDoctors, useAppointments, useUsers } from "../../hooks/useFirestore";
 import { useToast } from "../../hooks/useNotification";
 import Button from "../common/Button";
 import { z } from "zod";
@@ -19,6 +19,7 @@ interface AppointmentFormProps {
 export default function AppointmentForm({ patientId, onSuccess }: AppointmentFormProps) {
   const { doctors } = useDoctors();
   const { addAppointment } = useAppointments();
+  const { users } = useUsers();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [selectedDoctorFee, setSelectedDoctorFee] = useState(0);
@@ -45,12 +46,16 @@ export default function AppointmentForm({ patientId, onSuccess }: AppointmentFor
   }, [selectedDoctorId, doctors]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (users && users.length > 0) {
+      const docs = users.filter((u: any) => u.role === "doctor");
+      setDoctorUsers(docs);
+    } else if (typeof window !== "undefined") {
+      // Fallback if users is not yet loaded in mock mode
       const allUsers = JSON.parse(localStorage.getItem("hms_users") || "[]");
       const docs = allUsers.filter((u: any) => u.role === "doctor");
       setDoctorUsers(docs);
     }
-  }, []);
+  }, [users]);
 
   const onSubmit = async (data: AppointmentFormInputs) => {
     setLoading(true);
@@ -61,11 +66,11 @@ export default function AppointmentForm({ patientId, onSuccess }: AppointmentFor
         date: data.date,
         time: data.time,
         reason: data.reason,
-        status: "scheduled",
+        status: "pending",
         notes: data.notes || "",
         fee: selectedDoctorFee || 100,
       });
-      showToast("success", "Appointment Booked", "Your appointment has been successfully scheduled.");
+      showToast("success", "Appointment Requested", "Your appointment request has been submitted for admin approval.");
       onSuccess();
     } catch (e: any) {
       showToast("error", "Booking Failed", e.message || "Failed to book appointment");

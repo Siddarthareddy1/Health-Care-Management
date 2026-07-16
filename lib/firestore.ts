@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "./firebase";
 import { Patient, Doctor, Appointment, Bill, Notification, ActivityLog, User } from "../types";
+import { sendEmailNotification } from "./email";
 
 // Local storage helpers
 const getLocalData = <T>(key: string): T[] => {
@@ -42,7 +43,7 @@ const ensureSeedDb = () => {
         date: today,
         time: "10:00",
         reason: "Cardiology Routine Checkup",
-        status: "scheduled",
+        status: "approved",
         notes: "Follow up after previous medication adjustment",
         fee: 150,
         createdAt: new Date().toISOString(),
@@ -55,7 +56,7 @@ const ensureSeedDb = () => {
         date: tomorrow,
         time: "14:30",
         reason: "Heart rate monitor analysis",
-        status: "scheduled",
+        status: "approved",
         fee: 150,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -180,6 +181,20 @@ const ensureSeedDb = () => {
 if (typeof window !== "undefined") {
   ensureSeedDb();
 }
+
+const getDbUser = async (userId: string): Promise<User | null> => {
+  if (isFirebaseConfigured && db) {
+    try {
+      const docSnap = await getDoc(doc(db, "users", userId));
+      return docSnap.exists() ? (docSnap.data() as User) : null;
+    } catch {
+      return null;
+    }
+  } else {
+    const users = getLocalData<User>("hms_users");
+    return users.find(u => u.id === userId) || null;
+  }
+};
 
 // Activity Logging
 export const logActivity = async (userId: string, userName: string, action: string, details: string): Promise<void> => {
@@ -390,17 +405,64 @@ export const createAppointment = async (appData: Omit<Appointment, "id" | "creat
     await createNotification(appData.doctorId, "appointment", "New Appointment Scheduled", `A patient booked a session on ${appData.date} at ${appData.time}.`);
   }
 
+  // Trigger Email Notifications (runs asynchronously)
+  (async () => {
+    try {
+      const patient = await getDbUser(appData.patientId);
+      const doctor = await getDbUser(appData.doctorId);
+      
+      if (patient) {
+        // Send email to Patient (booked, pending approval)
+        await sendEmailNotification({
+          template: "APPOINTMENT_BOOKED_PATIENT",
+          recipientEmail: patient.email,
+          recipientName: patient.name,
+          variables: {
+            date: appData.date,
+            time: appData.time,
+            doctorName: doctor ? doctor.name : "Doctor",
+            reason: appData.reason
+          }
+        });
+
+        // Send email to Admin
+        await sendEmailNotification({
+          template: "APPOINTMENT_BOOKED_ADMIN",
+          recipientEmail: "admin@healthcare.com",
+          recipientName: "System Admin",
+          variables: {
+            patientName: patient.name,
+            doctorName: doctor ? doctor.name : "Doctor",
+            date: appData.date,
+            time: appData.time,
+            reason: appData.reason,
+            appointmentId: id
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Failed to dispatch appointment email notifications:", err);
+    }
+  })();
+
   return appointment;
 };
 
 export const updateAppointment = async (id: string, updateData: Partial<Appointment>): Promise<void> => {
+  let appToUpdate: Appointment | null = null;
+
   if (isFirebaseConfigured && db) {
     const docRef = doc(db, "appointments", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      appToUpdate = docSnap.data() as Appointment;
+    }
     await updateDoc(docRef, { ...updateData, updatedAt: new Date().toISOString() });
   } else {
     const appointments = getLocalData<Appointment>("hms_appointments");
     const index = appointments.findIndex(a => a.id === id);
     if (index >= 0) {
+      appToUpdate = appointments[index];
       appointments[index] = { 
         ...appointments[index], 
         ...updateData, 
@@ -414,6 +476,51 @@ export const updateAppointment = async (id: string, updateData: Partial<Appointm
         await createNotification(app.patientId, "appointment", `Appointment ${updateData.status.toUpperCase()}`, `Your appointment on ${app.date} has been marked as ${updateData.status}.`);
       }
     }
+  }
+
+  // Trigger Email Notifications (runs asynchronously)
+  if (appToUpdate && updateData.status) {
+    const finalApp = { ...appToUpdate, ...updateData };
+    (async () => {
+      try {
+        const patient = await getDbUser(finalApp.patientId);
+        const doctor = await getDbUser(finalApp.doctorId);
+
+        if (patient) {
+          await sendEmailNotification({
+            template: "APPOINTMENT_STATUS_UPDATE",
+            recipientEmail: patient.email,
+            recipientName: patient.name,
+            variables: {
+              status: finalApp.status,
+              date: finalApp.date,
+              time: finalApp.time,
+              doctorName: doctor ? doctor.name : "Doctor",
+              reason: finalApp.reason,
+              appointmentId: id
+            }
+          });
+        }
+
+        if (doctor && finalApp.status === "approved") {
+          await sendEmailNotification({
+            template: "APPOINTMENT_STATUS_UPDATE",
+            recipientEmail: doctor.email,
+            recipientName: doctor.name,
+            variables: {
+              status: "assigned",
+              date: finalApp.date,
+              time: finalApp.time,
+              patientName: patient ? patient.name : "Patient",
+              reason: finalApp.reason,
+              appointmentId: id
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Failed to send status update email:", err);
+      }
+    })();
   }
 };
 

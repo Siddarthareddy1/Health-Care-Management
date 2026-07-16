@@ -6,17 +6,29 @@ import Button from "../../../components/common/Button";
 import Link from "next/link";
 import { Activity, MailCheck } from "lucide-react";
 import { useToast } from "../../../hooks/useNotification";
+import { auth, isFirebaseConfigured } from "../../../lib/firebase";
+import { sendEmailVerification } from "firebase/auth";
 
 export default function VerifyEmailPage() {
   const { showToast } = useToast();
   const [resending, setResending] = useState(false);
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setResending(true);
-    setTimeout(() => {
+    try {
+      if (isFirebaseConfigured && auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        showToast("success", "Email Dispatched", "A fresh verification link has been sent to your email inbox.");
+      } else {
+        // Fallback mock
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        showToast("success", "Email Dispatched", "A fresh verification link has been sent to your email inbox.");
+      }
+    } catch (e: any) {
+      showToast("error", "Resend Failed", e.message || "Failed to dispatch verification email.");
+    } finally {
       setResending(false);
-      showToast("success", "Email Dispatched", "A fresh verification link has been sent to your email inbox.");
-    }, 1500);
+    }
   };
 
   return (

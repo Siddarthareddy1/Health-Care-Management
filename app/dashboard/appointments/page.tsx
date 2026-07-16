@@ -61,9 +61,10 @@ export default function AppointmentsPage() {
       const endDateTime = new Date(startDateTime.getTime() + 45 * 60 * 1000); // 45 min slots
 
       const statusColors = {
-        scheduled: " border-blue-500 bg-blue-100 text-blue-800",
+        pending: "border-amber-500 bg-amber-100 text-amber-800",
+        approved: " border-blue-500 bg-blue-100 text-blue-800",
         completed: "border-emerald-500 bg-emerald-100 text-emerald-800",
-        cancelled: "border-red-500 bg-red-100 text-red-800",
+        rejected: "border-red-500 bg-red-100 text-red-800",
       };
 
       return {
@@ -92,12 +93,12 @@ export default function AppointmentsPage() {
     setSelectedEvent(event);
   };
 
-  const handleUpdateStatus = async (status: "completed" | "cancelled") => {
+  const handleUpdateStatus = async (status: "pending" | "approved" | "rejected" | "completed") => {
     if (!selectedEvent) return;
     setUpdatingStatus(true);
     try {
       await updateAppStatus(selectedEvent.id, { status });
-      showToast("success", `Appointment ${status === 'completed' ? 'Completed' : 'Cancelled'}`, `Appointment has been set to ${status}.`);
+      showToast("success", "Update Successful", `Appointment has been set to ${status}.`);
       setSelectedEvent(null);
       refresh();
     } catch (e: any) {
@@ -224,8 +225,10 @@ export default function AppointmentsPage() {
               defaultView="month"
               eventPropGetter={(event) => {
                 let colorClass = "bg-healthcare-primary text-white";
+                if (event.status === "pending") colorClass = "bg-amber-500 text-white";
+                if (event.status === "approved") colorClass = "bg-blue-600 text-white";
                 if (event.status === "completed") colorClass = "bg-healthcare-success text-white";
-                if (event.status === "cancelled") colorClass = "bg-healthcare-error text-white";
+                if (event.status === "rejected") colorClass = "bg-healthcare-error text-white";
                 return {
                   className: `${colorClass} font-sans rounded border-0 text-xs px-2 py-1 shadow-subtle`
                 };
@@ -243,7 +246,8 @@ export default function AppointmentsPage() {
               <div className="flex items-center justify-between border-b border-healthcare-border pb-2.5">
                 <span className="text-sm font-bold text-healthcare-primary font-display">{selectedEvent.title}</span>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                  selectedEvent.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                  selectedEvent.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                  selectedEvent.status === 'approved' ? 'bg-blue-100 text-blue-800' :
                   selectedEvent.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
                 }`}>
                   {selectedEvent.status}
@@ -271,7 +275,30 @@ export default function AppointmentsPage() {
               </div>
             </div>
 
-            {selectedEvent.status === "scheduled" && role !== "patient" && (
+            {/* Admin actions for pending appointments */}
+            {selectedEvent.status === "pending" && role === "admin" && (
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => handleUpdateStatus("approved")} 
+                  variant="success" 
+                  fullWidth 
+                  loading={updatingStatus}
+                >
+                  Approve Appointment
+                </Button>
+                <Button 
+                  onClick={() => handleUpdateStatus("rejected")} 
+                  variant="danger" 
+                  fullWidth 
+                  loading={updatingStatus}
+                >
+                  Reject Request
+                </Button>
+              </div>
+            )}
+
+            {/* Doctor actions for approved appointments */}
+            {selectedEvent.status === "approved" && role === "doctor" && (
               <div className="flex items-center gap-2">
                 <Button 
                   onClick={() => handleUpdateStatus("completed")} 
@@ -282,7 +309,7 @@ export default function AppointmentsPage() {
                   Mark Completed
                 </Button>
                 <Button 
-                  onClick={() => handleUpdateStatus("cancelled")} 
+                  onClick={() => handleUpdateStatus("rejected")} 
                   variant="danger" 
                   fullWidth 
                   loading={updatingStatus}
@@ -292,9 +319,10 @@ export default function AppointmentsPage() {
               </div>
             )}
             
-            {selectedEvent.status === "scheduled" && role === "patient" && (
+            {/* Patient cancellation options */}
+            {(selectedEvent.status === "pending" || selectedEvent.status === "approved") && role === "patient" && (
               <Button 
-                onClick={() => handleUpdateStatus("cancelled")} 
+                onClick={() => handleUpdateStatus("rejected")} 
                 variant="danger" 
                 fullWidth 
                 loading={updatingStatus}
