@@ -144,8 +144,18 @@ if (typeof window !== "undefined") {
   ensureSeedUsers();
 }
 
+// Helper to fetch user role from Firestore
+export const getUserRole = async (userId: string): Promise<UserRole | null> => {
+  const user = await getUserById(userId);
+  return user ? user.role : null;
+};
+
 // Authentication API methods
-export const signUp = async (email: string, password: string, name: string, phone: string, role: UserRole): Promise<User> => {
+// Public registration: ALWAYS assigns role "patient" (hardcoded for security)
+export const signUp = async (email: string, password: string, name: string, phone: string, roleInput?: UserRole): Promise<User> => {
+  // Public registration is ALWAYS forced to "patient" regardless of input
+  const role: UserRole = "patient";
+
   if (isFirebaseConfigured && auth && db) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const userId = userCredential.user.uid;
@@ -155,7 +165,7 @@ export const signUp = async (email: string, password: string, name: string, phon
       email,
       name,
       phone,
-      role,
+      role: "patient",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -163,38 +173,18 @@ export const signUp = async (email: string, password: string, name: string, phon
     // Store in Firestore
     await setDoc(doc(db, "users", userId), userData);
 
-    // If roles require extra collection entries
-    if (role === "patient") {
-      await setDoc(doc(db, "patients", userId), {
-        id: userId,
-        userId,
-        dob: "",
-        gender: "",
-        address: "",
-        medicalHistory: [],
-        allergies: [],
-        emergencyContact: { name: "", phone: "", relationship: "" },
-        createdAt: new Date().toISOString(),
-      });
-    } else if (role === "doctor") {
-      await setDoc(doc(db, "doctors", userId), {
-        id: userId,
-        userId,
-        specialization: "General Medicine",
-        licenseNumber: "",
-        experience: 0,
-        rating: 5.0,
-        availability: {
-          "Monday": [{ start: "09:00", end: "17:00" }],
-          "Tuesday": [{ start: "09:00", end: "17:00" }],
-          "Wednesday": [{ start: "09:00", end: "17:00" }],
-          "Thursday": [{ start: "09:00", end: "17:00" }],
-          "Friday": [{ start: "09:00", end: "17:00" }]
-        },
-        consultationFee: 100,
-        bio: "",
-      });
-    }
+    // Seed patient profile record in Firestore
+    await setDoc(doc(db, "patients", userId), {
+      id: userId,
+      userId,
+      dob: "",
+      gender: "",
+      address: "",
+      medicalHistory: [],
+      allergies: [],
+      emergencyContact: { name: "", phone: "", relationship: "" },
+      createdAt: new Date().toISOString(),
+    });
 
     // Try sending email verification
     try {
@@ -208,7 +198,7 @@ export const signUp = async (email: string, password: string, name: string, phon
       template: "REGISTRATION_SUCCESS",
       recipientEmail: email,
       recipientName: name,
-      variables: { role }
+      variables: { role: "patient" }
     });
 
     return userData;
@@ -225,8 +215,8 @@ export const signUp = async (email: string, password: string, name: string, phon
       email,
       name,
       phone,
-      role,
-      avatar: `https://images.unsplash.com/photo-${role === 'doctor' ? '1594824813573-246434de83fb' : '1535713875002-d1d0cf377fde'}?auto=format&fit=crop&q=80&w=200`,
+      role: "patient",
+      avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -238,42 +228,20 @@ export const signUp = async (email: string, password: string, name: string, phon
     passwords[email] = password;
     localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
 
-    // Seed empty extra records in localStorage
-    if (role === "patient") {
-      const patients = JSON.parse(localStorage.getItem("hms_patients") || "[]");
-      patients.push({
-        id: userId,
-        userId,
-        dob: "1990-01-01",
-        gender: "Male",
-        address: "Enter your address",
-        medicalHistory: [],
-        allergies: [],
-        emergencyContact: { name: "Contact Person", phone: "0000000000", relationship: "Relation" },
-        createdAt: new Date().toISOString()
-      });
-      localStorage.setItem("hms_patients", JSON.stringify(patients));
-    } else if (role === "doctor") {
-      const doctors = JSON.parse(localStorage.getItem("hms_doctors") || "[]");
-      doctors.push({
-        id: userId,
-        userId,
-        specialization: "General Practice",
-        licenseNumber: "LIC-" + Math.floor(Math.random()*100000),
-        experience: 5,
-        rating: 5.0,
-        availability: {
-          "Monday": [{ start: "09:00", end: "17:00" }],
-          "Tuesday": [{ start: "09:00", end: "17:00" }],
-          "Wednesday": [{ start: "09:00", end: "17:00" }],
-          "Thursday": [{ start: "09:00", end: "17:00" }],
-          "Friday": [{ start: "09:00", end: "17:00" }]
-        },
-        consultationFee: 80,
-        bio: "Experienced general practitioner."
-      });
-      localStorage.setItem("hms_doctors", JSON.stringify(doctors));
-    }
+    // Seed patient in localStorage
+    const patients = JSON.parse(localStorage.getItem("hms_patients") || "[]");
+    patients.push({
+      id: userId,
+      userId,
+      dob: "1990-01-01",
+      gender: "Male",
+      address: "Enter your address",
+      medicalHistory: [],
+      allergies: [],
+      emergencyContact: { name: "Contact Person", phone: "0000000000", relationship: "Relation" },
+      createdAt: new Date().toISOString()
+    });
+    localStorage.setItem("hms_patients", JSON.stringify(patients));
 
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
 
@@ -282,10 +250,126 @@ export const signUp = async (email: string, password: string, name: string, phon
       template: "REGISTRATION_SUCCESS",
       recipientEmail: email,
       recipientName: name,
-      variables: { role }
+      variables: { role: "patient" }
     });
 
     return userData;
+  }
+};
+
+export const registerPatient = async (email: string, password: string, name: string, phone: string): Promise<User> => {
+  return signUp(email, password, name, phone, "patient");
+};
+
+// Admin ONLY: Create Doctor Account
+export interface CreateDoctorData {
+  email: string;
+  name: string;
+  phone: string;
+  specialization: string;
+  licenseNumber: string;
+  experience: number;
+  consultationFee: number;
+  bio?: string;
+}
+
+export const createDoctorAccount = async (
+  adminUID: string,
+  data: CreateDoctorData
+): Promise<{ doctor: User; temporaryPassword: string }> => {
+  // Generate random strong temporary password
+  const temporaryPassword = `Doc#${Math.floor(100000 + Math.random() * 900000)}!`;
+
+  if (isFirebaseConfigured && auth && db) {
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email, temporaryPassword);
+    const doctorUid = userCredential.user.uid;
+
+    const doctorUserData: User & { createdByAdmin?: string } = {
+      id: doctorUid,
+      email: data.email,
+      name: data.name,
+      phone: data.phone,
+      role: "doctor",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByAdmin: adminUID,
+    };
+
+    // Store in Firestore users collection
+    await setDoc(doc(db, "users", doctorUid), doctorUserData);
+
+    // Store in Firestore doctors collection
+    await setDoc(doc(db, "doctors", doctorUid), {
+      id: doctorUid,
+      userId: doctorUid,
+      specialization: data.specialization,
+      licenseNumber: data.licenseNumber,
+      experience: Number(data.experience),
+      rating: 5.0,
+      availability: {
+        "Monday": [{ start: "09:00", end: "17:00" }],
+        "Tuesday": [{ start: "09:00", end: "17:00" }],
+        "Wednesday": [{ start: "09:00", end: "17:00" }],
+        "Thursday": [{ start: "09:00", end: "17:00" }],
+        "Friday": [{ start: "09:00", end: "17:00" }]
+      },
+      consultationFee: Number(data.consultationFee),
+      bio: data.bio || `Dr. ${data.name} is a specialist in ${data.specialization}.`,
+      createdByAdmin: adminUID,
+      createdAt: new Date().toISOString()
+    });
+
+    return { doctor: doctorUserData, temporaryPassword };
+  } else {
+    // Mock Doctor Creation
+    const users = getLocalUsers();
+    if (users.some(u => u.email === data.email)) {
+      throw new Error("Doctor email already in use");
+    }
+
+    const doctorUid = "doc-" + Math.random().toString(36).substr(2, 9);
+    const doctorUserData: User & { createdByAdmin?: string } = {
+      id: doctorUid,
+      email: data.email,
+      name: data.name,
+      phone: data.phone,
+      role: "doctor",
+      avatar: "https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=200",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByAdmin: adminUID,
+    };
+
+    users.push(doctorUserData);
+    saveLocalUsers(users);
+
+    const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
+    passwords[data.email] = temporaryPassword;
+    localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
+
+    const doctors = JSON.parse(localStorage.getItem("hms_doctors") || "[]");
+    doctors.push({
+      id: doctorUid,
+      userId: doctorUid,
+      specialization: data.specialization,
+      licenseNumber: data.licenseNumber,
+      experience: Number(data.experience),
+      rating: 5.0,
+      availability: {
+        "Monday": [{ start: "09:00", end: "17:00" }],
+        "Tuesday": [{ start: "09:00", end: "17:00" }],
+        "Wednesday": [{ start: "09:00", end: "17:00" }],
+        "Thursday": [{ start: "09:00", end: "17:00" }],
+        "Friday": [{ start: "09:00", end: "17:00" }]
+      },
+      consultationFee: Number(data.consultationFee),
+      bio: data.bio || `Dr. ${data.name} is a specialist in ${data.specialization}.`,
+      createdByAdmin: adminUID,
+      createdAt: new Date().toISOString()
+    });
+    localStorage.setItem("hms_doctors", JSON.stringify(doctors));
+
+    return { doctor: doctorUserData, temporaryPassword };
   }
 };
 

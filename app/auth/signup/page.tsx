@@ -15,7 +15,7 @@ export default function SignupPage() {
           </div>
           <span className="font-bold text-2xl text-healthcare-primary font-display tracking-tight">CareFlow</span>
         </div>
-        <Card title="Create Account" subtitle="Register a new Patient, Doctor, or Administrative profile.">
+        <Card title="Patient Registration" subtitle="Create your secure CareFlow Patient Account.">
           <SignupForm />
         </Card>
       </div>

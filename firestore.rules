@@ -7,36 +7,86 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Helper function to get user data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Helper function to check if user exists in users collection
+    function userExists() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Helper function to check user role
+    function getUserRole() {
+      return userExists() ? getUserData().role : null;
+    }
+    
     // Helper function to check if the user is an admin
     function isAdmin() {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && getUserRole() == 'admin';
     }
     
     // Helper function to check if the user is a doctor
     function isDoctor() {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+      return isSignedIn() && getUserRole() == 'doctor';
     }
 
-    // Users collection rules
+    // Helper function to check if the user is a patient
+    function isPatient() {
+      return isSignedIn() && getUserRole() == 'patient';
+    }
+
+    // Users collection rules - IMMUTABLE ROLES ENFORCED
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Public signup ONLY allows 'patient' role. Admin can assign any role.
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId && request.resource.data.role == 'patient') ||
+        isAdmin()
+      );
+      // Users CANNOT change their own role field (immutable)
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          request.auth.uid == userId && 
+          (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+          (!('status' in request.resource.data) || request.resource.data.status == resource.data.status)
+        )
+      );
+      allow delete: if isAdmin();
     }
 
     // Patients collection rules
     match /patients/{patientId} {
-      allow read: if isSignedIn() && (request.auth.uid == patientId || isDoctor() || isAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == patientId || isAdmin());
+      allow read: if isSignedIn() && (
+        request.auth.uid == patientId || 
+        (resource.data != null && resource.data.userId == request.auth.uid) ||
+        isDoctor() || 
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (
+        request.auth.uid == patientId || 
+        request.resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow update: if isSignedIn() && (
+        request.auth.uid == patientId || 
+        (resource.data != null && resource.data.userId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
     // Doctors collection rules
     match /doctors/{doctorId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && (request.auth.uid == doctorId || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isSignedIn() && (
+        request.auth.uid == doctorId || 
+        (resource.data != null && resource.data.userId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
     // Appointments collection rules
@@ -58,13 +108,57 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Bills collection rules
+    // Medical Records collection rules
+    match /medicalRecords/{recordId} {
+      allow read: if isSignedIn() && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid ||
+        isDoctor() ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (isDoctor() || isAdmin());
+      allow update: if isSignedIn() && (
+        resource.data.doctorId == request.auth.uid || 
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Prescriptions collection rules
+    match /prescriptions/{prescriptionId} {
+      allow read: if isSignedIn() && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid ||
+        isDoctor() ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (isDoctor() || isAdmin());
+      allow update: if isSignedIn() && (
+        resource.data.doctorId == request.auth.uid || 
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Bills and Payments collection rules
     match /bills/{billId} {
       allow read: if isSignedIn() && (
         resource.data.patientId == request.auth.uid || 
         isAdmin()
       );
       allow write: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (
+        resource.data.patientId == request.auth.uid || 
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.patientId == request.auth.uid || 
+        isAdmin()
+      );
+      allow update, delete: if isAdmin();
     }
 
     // Notifications collection rules

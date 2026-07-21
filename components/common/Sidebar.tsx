@@ -11,6 +11,9 @@ import {
   CreditCard, 
   User, 
   Settings,
+  UserPlus,
+  Stethoscope,
+  ShieldCheck,
   HelpCircle,
   X
 } from "lucide-react";
@@ -26,33 +29,34 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const role = user?.role || "patient";
 
   const getLinks = () => {
-    const baseLinks = [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
-    ];
-
     if (role === "admin") {
       return [
-        ...baseLinks,
-        { name: "Patients", href: "/dashboard/patients", icon: Users },
-        { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
-        { name: "Profile", href: "/dashboard/profile", icon: User },
+        { name: "Admin Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+        { name: "Create Doctor", href: "/admin/create-doctor", icon: UserPlus },
+        { name: "Manage Users", href: "/admin/users", icon: ShieldCheck },
+        { name: "Manage Doctors", href: "/admin/doctors", icon: Stethoscope },
+        { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
+        { name: "Patients List", href: "/dashboard/patients", icon: Users },
+        { name: "Billing & Financials", href: "/dashboard/billing", icon: CreditCard },
+        { name: "Admin Profile", href: "/dashboard/profile", icon: User },
         { name: "System Settings", href: "/dashboard/settings", icon: Settings },
       ];
     }
 
     if (role === "doctor") {
       return [
-        ...baseLinks,
-        { name: "Patients", href: "/dashboard/patients", icon: Users },
-        { name: "Profile", href: "/dashboard/profile", icon: User },
+        { name: "Doctor Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
+        { name: "My Appointments", href: "/dashboard/appointments", icon: Calendar },
+        { name: "Assigned Patients", href: "/dashboard/patients", icon: Users },
+        { name: "Doctor Profile", href: "/dashboard/profile", icon: User },
         { name: "Settings", href: "/dashboard/settings", icon: Settings },
       ];
     }
 
     // Patient links
     return [
-      ...baseLinks,
+      { name: "Patient Dashboard", href: "/patient/dashboard", icon: LayoutDashboard },
+      { name: "My Appointments", href: "/dashboard/appointments", icon: Calendar },
       { name: "My Bills", href: "/dashboard/billing", icon: CreditCard },
       { name: "My Profile", href: "/dashboard/profile", icon: User },
       { name: "Settings", href: "/dashboard/settings", icon: Settings },
@@ -77,7 +81,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex-1 py-6 px-4">
+        <div className="flex-1 py-6 px-4 overflow-y-auto">
           <div className="flex items-center justify-between lg:hidden mb-6">
             <span className="font-bold text-healthcare-primary font-display">CareFlow Menu</span>
             <button 
@@ -86,6 +90,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          <div className="mb-4 px-2">
+            <span className="text-[10px] uppercase tracking-wider font-extrabold text-healthcare-textLight">
+              {role} Navigation
+            </span>
           </div>
 
           <nav className="space-y-1.5">
@@ -122,7 +132,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             FAQ & Support
           </Link>
           <div className="text-[10px] text-healthcare-textLight px-4 pt-2 font-mono">
-            v1.0.0 · Production Ready
+            v1.0.0 · Role-Secured Architecture
           </div>
         </div>
       </aside>

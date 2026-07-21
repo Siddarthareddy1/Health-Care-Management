@@ -42,13 +42,25 @@ export default function LoginForm() {
     resolver: zodResolver(LoginSchema),
   });
 
+  const redirectUserByRole = (user: { role: string }) => {
+    if (user.role === "admin") {
+      router.push("/admin/dashboard");
+    } else if (user.role === "doctor") {
+      router.push("/doctor/dashboard");
+    } else if (user.role === "patient") {
+      router.push("/patient/dashboard");
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
   // Handle standard Email Sign-In
   const onSubmitEmail = async (data: LoginFormInputs) => {
     setLoading(true);
     try {
       const user = await signIn(data.email, data.password);
       showToast("success", "Login Successful", `Welcome back, ${user.name}!`);
-      router.push("/dashboard");
+      redirectUserByRole(user);
     } catch (e: any) {
       showToast("error", "Login Failed", e.message || "Invalid email or password");
     } finally {
@@ -62,7 +74,7 @@ export default function LoginForm() {
     try {
       const user = await signInWithGoogle();
       showToast("success", "Login Successful", `Welcome back, ${user.name}!`);
-      router.push("/dashboard");
+      redirectUserByRole(user);
     } catch (e: any) {
       showToast("error", "Google Sign-In Failed", e.message || "Failed to log in with Google.");
     } finally {
@@ -123,7 +135,7 @@ export default function LoginForm() {
     try {
       const user = await signInWithPhoneConfirm(confirmationResult, otpCode, phoneNumber);
       showToast("success", "Login Successful", `Welcome to CareFlow, ${user.name}!`);
-      router.push("/dashboard");
+      redirectUserByRole(user);
     } catch (e: any) {
       showToast("error", "Verification Failed", e.message || "Invalid OTP code entered.");
     } finally {

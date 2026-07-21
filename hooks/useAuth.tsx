@@ -6,6 +6,7 @@ import {
   subscribeToAuth, 
   signIn as apiSignIn, 
   signUp as apiSignUp, 
+  registerPatient as apiRegisterPatient,
   signOut as apiSignOut, 
   resetPassword as apiResetPassword,
   signInWithGoogle as apiSignInWithGoogle,
@@ -17,7 +18,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<User>;
-  signUp: (email: string, password: string, name: string, phone: string, role: UserRole) => Promise<User>;
+  signUp: (email: string, password: string, name: string, phone: string, role?: UserRole) => Promise<User>;
+  registerPatient: (email: string, password: string, name: string, phone: string) => Promise<User>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<User>;
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, phone: string, role: UserRole) => {
+  const signUp = async (email: string, password: string, name: string, phone: string, role: UserRole = "patient") => {
     setLoading(true);
     try {
       const userResult = await apiSignUp(email, password, name, phone, role);
@@ -65,6 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const registerPatient = async (email: string, password: string, name: string, phone: string) => {
+    return signUp(email, password, name, phone, "patient");
   };
 
   const signOut = async () => {
@@ -120,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading, 
       signIn, 
       signUp, 
+      registerPatient,
       signOut, 
       resetPassword, 
       signInWithGoogle, 
