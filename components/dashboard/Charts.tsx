@@ -15,21 +15,21 @@ import {
 } from "recharts";
 
 const revenueData = [
-  { name: "Jan", revenue: 4000 },
-  { name: "Feb", revenue: 5200 },
-  { name: "Mar", revenue: 6800 },
-  { name: "Apr", revenue: 6100 },
-  { name: "May", revenue: 8500 },
-  { name: "Jun", revenue: 9800 },
-  { name: "Jul", revenue: 12500 },
+  { name: "Jan", revenue: 4200, appointments: 40 },
+  { name: "Feb", revenue: 5600, appointments: 52 },
+  { name: "Mar", revenue: 7100, appointments: 68 },
+  { name: "Apr", revenue: 6400, appointments: 60 },
+  { name: "May", revenue: 8900, appointments: 85 },
+  { name: "Jun", revenue: 10400, appointments: 98 },
+  { name: "Jul", revenue: 13200, appointments: 120 },
 ];
 
 const specialtyData = [
-  { name: "Cardiology", appointments: 45, color: "#1E40AF" },
-  { name: "Pediatrics", appointments: 30, color: "#3B82F6" },
-  { name: "Orthopedics", appointments: 25, color: "#10B981" },
-  { name: "Dermatology", appointments: 20, color: "#F59E0B" },
-  { name: "Neurology", appointments: 15, color: "#EF4444" },
+  { name: "Cardiology", consultations: 48, color: "#0F766E" },
+  { name: "Pediatrics", consultations: 34, color: "#0D9488" },
+  { name: "Orthopedics", consultations: 28, color: "#0284C7" },
+  { name: "Dermatology", consultations: 22, color: "#14B8A6" },
+  { name: "Neurology", consultations: 18, color: "#6366F1" },
 ];
 
 export function RevenueChart() {
@@ -39,32 +39,35 @@ export function RevenueChart() {
   }, []);
 
   if (!mounted) {
-    return <div className="h-72 bg-healthcare-bgSecondary rounded-standard animate-pulse" />;
+    return <div className="h-72 bg-slate-100/70 rounded-2xl animate-pulse" />;
   }
 
   return (
-    <div className="h-72 w-full">
+    <div className="h-72 w-full font-sans">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
           <defs>
-            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#1E40AF" stopOpacity={0.2} />
-              <stop offset="95%" stopColor="#1E40AF" stopOpacity={0} />
+            <linearGradient id="colorRevenueTeal" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#0F766E" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#0F766E" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-          <XAxis dataKey="name" stroke="#6B7280" fontSize={11} fontWeight={600} />
-          <YAxis stroke="#6B7280" fontSize={11} fontWeight={600} tickFormatter={(v) => `$${v}`} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+          <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} fontWeight={600} tickLine={false} />
+          <YAxis stroke="#94A3B8" fontSize={11} fontWeight={600} tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} />
           <Tooltip
             contentStyle={{ 
               backgroundColor: "#FFFFFF", 
-              borderRadius: "8px", 
-              border: "1px solid #E5E7EB",
-              fontFamily: "Inter, sans-serif"
+              borderRadius: "12px", 
+              border: "1px solid #E2E8F0",
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
+              fontFamily: "Inter, sans-serif",
+              fontSize: "12px",
+              fontWeight: 600
             }}
             formatter={(value) => [`$${value}`, "Revenue"]}
           />
-          <Area type="monotone" dataKey="revenue" stroke="#1E40AF" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
+          <Area type="monotone" dataKey="revenue" stroke="#0F766E" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenueTeal)" />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -78,25 +81,28 @@ export function SpecialtyChart() {
   }, []);
 
   if (!mounted) {
-    return <div className="h-72 bg-healthcare-bgSecondary rounded-standard animate-pulse" />;
+    return <div className="h-72 bg-slate-100/70 rounded-2xl animate-pulse" />;
   }
 
   return (
-    <div className="h-72 w-full">
+    <div className="h-72 w-full font-sans">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={specialtyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-          <XAxis dataKey="name" stroke="#6B7280" fontSize={11} fontWeight={600} />
-          <YAxis stroke="#6B7280" fontSize={11} fontWeight={600} />
+        <BarChart data={specialtyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+          <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} fontWeight={600} tickLine={false} />
+          <YAxis stroke="#94A3B8" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} />
           <Tooltip
             contentStyle={{ 
               backgroundColor: "#FFFFFF", 
-              borderRadius: "8px", 
-              border: "1px solid #E5E7EB",
-              fontFamily: "Inter, sans-serif"
+              borderRadius: "12px", 
+              border: "1px solid #E2E8F0",
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
+              fontFamily: "Inter, sans-serif",
+              fontSize: "12px",
+              fontWeight: 600
             }}
           />
-          <Bar dataKey="appointments" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={45}>
+          <Bar dataKey="consultations" radius={[8, 8, 0, 0]} maxBarSize={40}>
             {specialtyData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
@@ -106,3 +112,4 @@ export function SpecialtyChart() {
     </div>
   );
 }
+
