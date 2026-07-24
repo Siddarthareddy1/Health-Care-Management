@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "danger" | "success";
+  variant?: "primary" | "secondary" | "outline" | "danger" | "success" | "ghost";
   loading?: boolean;
   fullWidth?: boolean;
 }
@@ -16,18 +16,19 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyles = 
-    "inline-flex items-center justify-center font-semibold rounded-standard transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 px-4 py-2 text-sm shadow-subtle font-sans";
+    "inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none active:scale-[0.98] text-sm font-sans select-none";
   
   const variants = {
-    primary: "bg-healthcare-primary hover:bg-healthcare-secondary text-white focus:ring-healthcare-primary",
-    secondary: "bg-healthcare-accent hover:bg-healthcare-primary text-white focus:ring-healthcare-accent",
-    outline: "border border-healthcare-border text-healthcare-textDark hover:bg-healthcare-bgSecondary focus:ring-healthcare-primary bg-white",
-    danger: "bg-healthcare-error hover:bg-red-700 text-white focus:ring-healthcare-error",
-    success: "bg-healthcare-success hover:bg-emerald-600 text-white focus:ring-healthcare-success",
+    primary: "bg-[#007AFF] hover:bg-[#0051CC] text-white px-6 py-3 focus:ring-4 focus:ring-[#007AFF]/20 shadow-sm",
+    secondary: "bg-transparent border-2 border-[#007AFF] text-[#007AFF] hover:bg-[#007AFF]/10 px-5.5 py-2.5 focus:ring-4 focus:ring-[#007AFF]/15",
+    outline: "border border-[#E5E7EB] bg-white text-[#1F2937] hover:bg-[#F8FAFB] px-5 py-2.5 focus:ring-4 focus:ring-[#007AFF]/15 shadow-xs",
+    danger: "bg-[#FF3B30] hover:bg-[#E63C32] text-white px-6 py-3 focus:ring-4 focus:ring-[#FF3B30]/20 shadow-sm",
+    ghost: "bg-transparent text-[#007AFF] hover:bg-[#007AFF]/10 px-5 py-3 border-none",
+    success: "bg-[#34C759] hover:bg-[#2DB04F] text-white px-6 py-3 focus:ring-4 focus:ring-[#34C759]/20 shadow-sm",
   };
 
   const widthStyle = fullWidth ? "w-full" : "";
-  const loadingStyle = loading || disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer";
+  const loadingStyle = loading || disabled ? "opacity-60 cursor-not-allowed active:scale-100" : "cursor-pointer";
 
   return (
     <button
@@ -45,3 +46,4 @@ export default function Button({
     </button>
   );
 }
+

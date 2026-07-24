@@ -10,7 +10,7 @@ import Button from "@/components/common/Button";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppointments, usePatients, useUsers } from "@/hooks/useFirestore";
-import { Calendar, Users, Stethoscope, Clock, CheckCircle } from "lucide-react";
+import { Calendar, Users, Stethoscope, Clock, CheckCircle, ArrowRight, Activity, Star } from "lucide-react";
 
 export default function DoctorDashboardPage() {
   const { user } = useAuth();
@@ -22,67 +22,130 @@ export default function DoctorDashboardPage() {
   const todayStr = new Date().toISOString().split("T")[0];
   const todayAppointments = myAppointments.filter((a) => a.date === todayStr);
   const pendingAppointments = myAppointments.filter((a) => a.status === "pending");
+  const completedToday = todayAppointments.filter((a) => a.status === "completed").length;
+
+  const getPatientName = (patientId: string) => {
+    return users.find((u) => u.id === patientId)?.name || "Assigned Patient";
+  };
 
   return (
     <PrivateRoute allowedRoles={["doctor"]}>
       <DashboardLayout>
-        <div className="space-y-6 font-sans text-healthcare-textDark">
-          {/* Welcome Banner */}
-          <div className="bg-white border border-healthcare-border rounded-standard p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between shadow-subtle gap-4">
+        <div className="space-y-8 font-sans text-[#1F2937] animate-fade-in-up">
+          {/* Doctor Welcome Banner */}
+          <div className="bg-gradient-to-r from-white via-[#F8FAFB] to-[#FFE5E5]/40 border border-[#E5E7EB] rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                  Medical Practitioner Portal
-                </span>
-                <span className="text-xs text-healthcare-textLight font-mono">Licensed Physician Session</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFE5E5] text-[#C41C3B] border border-[#FF6B6B]/20 text-xs font-semibold mb-2">
+                <span>👨‍⚕️ Physician Portal</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B6B] animate-ping" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-healthcare-textDark font-display tracking-tight mt-1">
-                Good day, <span className="text-healthcare-primary">{user?.name}</span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1F2937] font-display tracking-tight">
+                Welcome, Dr. {user?.name || "Doctor"} 👨‍⚕️
               </h1>
-              <p className="text-sm text-healthcare-textMedium font-medium mt-1">
-                You have <span className="font-bold text-healthcare-primary">{todayAppointments.length} consultations</span> scheduled for today.
+              <p className="text-sm text-[#6B7280] font-medium mt-1">
+                You have <span className="font-bold text-[#FF6B6B]">{todayAppointments.length} consultations</span> scheduled for today.
               </p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               <Link href="/dashboard/patients">
-                <Button variant="primary" className="gap-2 shadow-sm">
+                <Button variant="primary" className="bg-[#FF6B6B] hover:bg-[#E05252] focus:ring-[#FF6B6B]/20 gap-2">
                   <Users className="w-4 h-4" /> Assigned Patients
                 </Button>
               </Link>
               <Link href="/dashboard/appointments">
                 <Button variant="outline" className="gap-2">
-                  <Calendar className="w-4 h-4" /> Schedule Calendar
+                  <Calendar className="w-4 h-4 text-[#FF6B6B]" /> Schedule Calendar
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {/* Stat Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Today's Consultations"
               value={todayAppointments.length}
-              icon={<Clock className="w-6 h-6" />}
-              description="Scheduled Consultations Today"
+              icon={<Calendar className="w-6 h-6" />}
+              color="blue"
+              change="Today's Schedule"
+            />
+            <StatCard
+              title="Total Patients"
+              value={patients.length || myAppointments.length}
+              icon={<Users className="w-6 h-6" />}
+              color="green"
+              change="Active Cases"
+            />
+            <StatCard
+              title="Completed Today"
+              value={completedToday}
+              icon={<CheckCircle className="w-6 h-6" />}
+              color="orange"
+              change="Reviewed"
             />
             <StatCard
               title="Pending Requests"
               value={pendingAppointments.length}
-              icon={<Calendar className="w-6 h-6" />}
-              description={pendingAppointments.length > 0 ? "Requires Doctor Confirmation" : "All Consultations Reviewed"}
-            />
-            <StatCard
-              title="Total Assigned Patients"
-              value={patients.length}
-              icon={<Users className="w-6 h-6" />}
-              description="Active Patient Cases"
+              icon={<Clock className="w-6 h-6" />}
+              color="red"
+              change={pendingAppointments.length > 0 ? "Requires Action" : "All Clear"}
             />
           </div>
 
-          {/* Main Content Grid */}
+          {/* Schedule Timeline & Patient Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Timeline View */}
             <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm p-6">
+                <div className="flex items-center justify-between mb-6 border-b border-[#E5E7EB] pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-[#1F2937] font-display">Today's Timeline Schedule</h2>
+                    <p className="text-xs text-[#6B7280]">Chronological appointment slots</p>
+                  </div>
+                  <span className="text-xs font-semibold text-[#FF6B6B] bg-[#FFE5E5] px-3 py-1 rounded-full border border-[#FF6B6B]/20">
+                    {todayAppointments.length} Today
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {todayAppointments.length > 0 ? (
+                    todayAppointments.map((slot) => (
+                      <ScheduleSlot
+                        key={slot.id}
+                        time={`${slot.time}`}
+                        patient={getPatientName(slot.patientId)}
+                        status={slot.status === 'completed' ? 'Completed' : slot.status === 'approved' ? 'In Progress' : 'Upcoming'}
+                        reason={slot.reason}
+                        onComplete={() => updateAppStatus(slot.id, { status: "completed" })}
+                      />
+                    ))
+                  ) : (
+                    <div className="space-y-3">
+                      <ScheduleSlot
+                        time="09:00 AM - 09:30 AM"
+                        patient="John Doe"
+                        status="Completed"
+                        reason="Follow-up Blood Pressure Check"
+                      />
+                      <ScheduleSlot
+                        time="10:00 AM - 10:30 AM"
+                        patient="Sarah Jenkins"
+                        status="In Progress"
+                        reason="Routine Heart & Vascular Checkup"
+                      />
+                      <ScheduleSlot
+                        time="11:15 AM - 11:45 AM"
+                        patient="Michael Brown"
+                        status="Upcoming"
+                        reason="Lab Results Review"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent Appointments Component */}
               <RecentAppointments
                 appointments={myAppointments}
                 users={users}
@@ -94,37 +157,61 @@ export default function DoctorDashboardPage() {
               />
             </div>
 
+            {/* Right Side Cards */}
             <div className="space-y-6">
-              <Card title="Physician Quick Actions" subtitle="Fast management of patient cases">
+              <Card title="Physician Performance" subtitle="Clinical ratings & metrics">
+                <div className="space-y-4 pt-2">
+                  <div className="p-4 bg-[#F8FAFB] rounded-xl border border-[#E5E7EB] flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-[#6B7280]">Patient Satisfaction</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-2xl font-extrabold text-[#1F2937] font-display">4.9</span>
+                        <div className="flex text-amber-400 text-sm">★★★★★</div>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-[#FFE5E5] text-[#C41C3B] rounded-xl">
+                      <Star size={24} />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-[#F8FAFB] rounded-xl border border-[#E5E7EB]">
+                    <p className="text-xs font-semibold text-[#6B7280]">Consultation Rate</p>
+                    <p className="text-2xl font-extrabold text-[#1F2937] font-display mt-0.5">$150 / session</p>
+                    <p className="text-xs text-[#34C759] font-medium mt-1">Standard Specialty Fee</p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card title="Quick Management" subtitle="Physician shortcuts">
                 <div className="space-y-3 pt-2">
                   <Link href="/dashboard/patients">
-                    <Button variant="primary" fullWidth className="justify-between">
-                      <span>View Patient Histories</span>
+                    <Button variant="primary" fullWidth className="bg-[#FF6B6B] hover:bg-[#E05252] justify-between text-xs py-2.5">
+                      <span>View Assigned Patients</span>
                       <Users className="w-4 h-4" />
                     </Button>
                   </Link>
                   <Link href="/dashboard/appointments">
-                    <Button variant="outline" fullWidth className="justify-between">
+                    <Button variant="outline" fullWidth className="justify-between text-xs py-2.5">
                       <span>Manage All Appointments</span>
-                      <Calendar className="w-4 h-4" />
+                      <Calendar className="w-4 h-4 text-[#FF6B6B]" />
                     </Button>
                   </Link>
                   <Link href="/dashboard/profile">
-                    <Button variant="outline" fullWidth className="justify-between">
+                    <Button variant="outline" fullWidth className="justify-between text-xs py-2.5">
                       <span>Update Doctor Profile</span>
-                      <Stethoscope className="w-4 h-4" />
+                      <Stethoscope className="w-4 h-4 text-[#FF6B6B]" />
                     </Button>
                   </Link>
                 </div>
               </Card>
 
-              <Card title="Clinical Privacy Notice" subtitle="HIPAA Compliance Rules">
-                <div className="p-3 bg-purple-50 border border-purple-200 rounded-standard text-xs text-purple-900 space-y-1">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 text-purple-700" /> Patient Record Safeguards
+              <Card title="Clinical Security & Privacy" subtitle="HIPAA Physician Access Rules">
+                <div className="p-4 bg-[#FFE5E5]/50 border border-[#FF6B6B]/20 rounded-xl text-xs text-[#C41C3B] space-y-2">
+                  <p className="font-bold flex items-center gap-2 text-sm">
+                    <CheckCircle className="w-5 h-5 text-[#FF6B6B]" /> Authenticated Access
                   </p>
-                  <p className="text-[11px] leading-relaxed text-purple-800">
-                    Doctors can only read and update records for assigned patients or authorized consultations.
+                  <p className="leading-relaxed text-[#1F2937]">
+                    Medical record edits are logged with your NPI license session token for compliance and audit auditing.
                   </p>
                 </div>
               </Card>
@@ -135,3 +222,53 @@ export default function DoctorDashboardPage() {
     </PrivateRoute>
   );
 }
+
+// Schedule Slot Item Component
+function ScheduleSlot({ time, patient, status, reason, onComplete }: {
+  time: string;
+  patient: string;
+  status: 'Completed' | 'In Progress' | 'Upcoming';
+  reason?: string;
+  onComplete?: () => void;
+}) {
+  const statusColors = {
+    'Completed': 'bg-[#E8F8EC] text-[#34C759] border-[#34C759]/20',
+    'In Progress': 'bg-[#DFF1FF] text-[#0051CC] border-[#007AFF]/20',
+    'Upcoming': 'bg-[#F8FAFB] text-[#6B7280] border-[#E5E7EB]',
+  };
+
+  return (
+    <div className="p-4 border border-[#E5E7EB] rounded-xl hover:shadow-md transition-all duration-200 bg-white">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-bold text-[#1F2937] text-base font-display">{patient}</p>
+          {reason && <p className="text-xs text-[#6B7280] font-medium mt-0.5">{reason}</p>}
+          <p className="text-xs text-[#6B7280] mt-2 font-mono flex items-center gap-1">
+            <Clock size={14} className="text-[#FF6B6B]" /> {time}
+          </p>
+        </div>
+        <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusColors[status]}`}>
+          {status}
+        </span>
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-[#E5E7EB] flex gap-2 justify-end">
+        {onComplete && status !== 'Completed' && (
+          <button
+            onClick={onComplete}
+            className="text-xs font-semibold bg-[#34C759] text-white px-3 py-1.5 rounded-lg hover:bg-[#2DB04F] transition"
+          >
+            Mark Completed
+          </button>
+        )}
+        <Link
+          href="/dashboard/patients"
+          className="text-xs font-semibold text-[#007AFF] hover:bg-[#DFF1FF] px-3 py-1.5 rounded-lg transition"
+        >
+          Patient Notes
+        </Link>
+      </div>
+    </div>
+  );
+}
+

@@ -17,18 +17,20 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/auth/login");
+      router.push("/login");
     }
   }, [user, loading, router]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-healthcare-bgSecondary flex flex-col items-center justify-center">
-        <svg className="animate-spin h-10 w-10 text-healthcare-primary mb-4" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-        <span className="font-semibold text-healthcare-textMedium text-sm font-sans">Verifying security session...</span>
+      <div className="min-h-screen bg-[#F8FAFB] flex flex-col items-center justify-center font-sans">
+        <div className="p-4 bg-white rounded-2xl shadow-md border border-[#E5E7EB] flex items-center gap-3">
+          <svg className="animate-spin h-6 w-6 text-[#007AFF]" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="font-bold text-[#1F2937] text-sm">Verifying security session...</span>
+        </div>
       </div>
     );
   }
@@ -36,14 +38,15 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-healthcare-bgSecondary flex flex-col">
+    <div className="min-h-screen bg-[#F8FAFB] flex flex-col font-sans">
       <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden pt-16">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           {children}
         </main>
       </div>
     </div>
   );
 }
+

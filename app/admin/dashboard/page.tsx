@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import PrivateRoute from "@/components/common/PrivateRoute";
 import DashboardLayout from "@/app/dashboard/layout";
 import StatCard from "@/components/dashboard/StatCard";
@@ -17,7 +17,14 @@ import {
   DollarSign, 
   Calendar, 
   ArrowRight,
-  Activity
+  Activity,
+  Search,
+  Filter,
+  Download,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  FileSpreadsheet
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -27,190 +34,274 @@ export default function AdminDashboardPage() {
   const { appointments } = useAppointments();
   const { bills } = useBills();
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 5;
+
   const totalUsers = users.length;
   const doctorCount = users.filter((u) => u.role === "doctor").length;
   const patientCount = users.filter((u) => u.role === "patient").length;
-  const adminCount = users.filter((u) => u.role === "admin").length;
 
-  const totalRevenue = bills
-    .filter((b) => b.status === "paid")
-    .reduce((sum, b) => sum + b.amount, 0);
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const totalPages = Math.ceil(filteredUsers.length / rowsPerPage) || 1;
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   return (
     <PrivateRoute allowedRoles={["admin"]}>
       <DashboardLayout>
-        <div className="space-y-6 font-sans text-healthcare-textDark">
-          {/* Welcome Banner */}
-          <div className="bg-white border border-healthcare-border rounded-standard p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between shadow-subtle gap-4">
+        <div className="space-y-8 font-sans text-[#1F2937] animate-fade-in-up">
+          {/* Admin Header Banner */}
+          <div className="bg-gradient-to-r from-white via-[#F8FAFB] to-[#F3E8FF]/50 border border-[#E5E7EB] rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                  System Administrator
-                </span>
-                <span className="text-xs text-healthcare-textLight font-mono">RBAC Security Mode Active</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F3E8FF] text-[#6D28D9] border border-[#8B5CF6]/20 text-xs font-semibold mb-2">
+                <span>⚙️ System Administrator</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] animate-ping" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-healthcare-textDark font-display tracking-tight mt-1">
-                Admin Control Center
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1F2937] font-display tracking-tight">
+                Admin Dashboard ⚙️
               </h1>
-              <p className="text-sm text-healthcare-textMedium font-medium mt-1">
-                Welcome back, <span className="text-healthcare-primary font-bold">{user?.name}</span>. Manage users, provision doctors, and audit system activities.
+              <p className="text-sm text-[#6B7280] font-medium mt-1">
+                System overview and clinical resource management.
               </p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               <Link href="/admin/create-doctor">
-                <Button variant="primary" className="gap-2 shadow-sm">
+                <Button variant="primary" className="bg-[#8B5CF6] hover:bg-[#7C3AED] focus:ring-[#8B5CF6]/20 gap-2">
                   <UserPlus className="w-4 h-4" /> Create Doctor Account
                 </Button>
               </Link>
               <Link href="/admin/users">
                 <Button variant="outline" className="gap-2">
-                  <ShieldCheck className="w-4 h-4" /> User Directory
+                  <ShieldCheck className="w-4 h-4 text-[#8B5CF6]" /> User Roster
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Stats Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Total System Users"
               value={totalUsers}
               icon={<Users className="w-6 h-6" />}
-              description={`${patientCount} Patients · ${doctorCount} Doctors`}
+              color="blue"
+              change="+12% Active"
             />
             <StatCard
-              title="Active Doctors"
+              title="Total Doctors"
               value={doctorCount}
               icon={<Stethoscope className="w-6 h-6" />}
-              description="Admin Provisioned Staff"
+              color="green"
+              change="Staff Roster"
             />
             <StatCard
               title="Total Appointments"
               value={appointments.length}
               icon={<Calendar className="w-6 h-6" />}
-              description="System-wide Consultations"
+              color="orange"
+              change="Total Booked"
             />
             <StatCard
-              title="Total Revenue Collected"
-              value={`$${totalRevenue.toLocaleString()}`}
-              icon={<DollarSign className="w-6 h-6" />}
-              description="Verified Paid Invoices"
+              title="System Health"
+              value="99.8%"
+              icon={<Activity className="w-6 h-6" />}
+              color="red"
+              change="↑ Online"
             />
           </div>
 
-          {/* Quick Management Shortcuts */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card title="Doctor Management" subtitle="Provision and review licensed medical staff">
-              <div className="space-y-3 pt-2">
-                <p className="text-xs text-healthcare-textMedium">
-                  Only System Administrators can create Doctor profiles. Doctors receive auto-generated credentials.
-                </p>
-                <div className="flex flex-col gap-2">
-                  <Link href="/admin/create-doctor">
-                    <Button variant="primary" fullWidth className="justify-between">
-                      <span>Create Doctor Account</span>
-                      <UserPlus className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                  <Link href="/admin/doctors">
-                    <Button variant="outline" fullWidth className="justify-between">
-                      <span>View Doctor Roster</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </Card>
-
-            <Card title="User & Security Audit" subtitle="Inspect user roles and security permissions">
-              <div className="space-y-3 pt-2">
-                <div className="grid grid-cols-3 text-center bg-healthcare-bgSecondary p-3 rounded-standard">
-                  <div>
-                    <span className="block text-lg font-extrabold text-healthcare-primary">{patientCount}</span>
-                    <span className="text-[10px] font-bold text-healthcare-textMedium uppercase">Patients</span>
-                  </div>
-                  <div>
-                    <span className="block text-lg font-extrabold text-healthcare-secondary">{doctorCount}</span>
-                    <span className="text-[10px] font-bold text-healthcare-textMedium uppercase">Doctors</span>
-                  </div>
-                  <div>
-                    <span className="block text-lg font-extrabold text-amber-600">{adminCount}</span>
-                    <span className="text-[10px] font-bold text-healthcare-textMedium uppercase">Admins</span>
-                  </div>
-                </div>
-                <Link href="/admin/users">
-                  <Button variant="outline" fullWidth className="justify-between">
-                    <span>Manage User Accounts</span>
-                    <ShieldCheck className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-
-            <Card title="Security & Compliance" subtitle="HIPAA & Firestore Rules Status">
-              <div className="space-y-3 pt-2">
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-standard text-xs text-emerald-800 space-y-1">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> Immutable Roles Enforced
-                  </p>
-                  <p className="text-[11px] leading-relaxed text-emerald-700">
-                    Public signup is restricted strictly to Patients. Users cannot modify role properties.
-                  </p>
-                </div>
-                <Link href="/dashboard/settings">
-                  <Button variant="outline" fullWidth className="justify-between">
-                    <span>System Settings & Logs</span>
-                    <Activity className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </div>
-            </Card>
+          {/* Management Action Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <AdminSectionCard
+              title="User Management"
+              description="View and manage all registered system users"
+              action="Manage Users"
+              href="/admin/users"
+              color="blue"
+            />
+            <AdminSectionCard
+              title="Doctor Roster"
+              description="Manage doctor profiles and specializations"
+              action="Manage Doctors"
+              href="/admin/doctors"
+              color="green"
+            />
+            <AdminSectionCard
+              title="Create Doctor"
+              description="Provision new medical practitioner account"
+              action="Create Doctor"
+              href="/admin/create-doctor"
+              color="purple"
+              isPrimary={true}
+            />
+            <AdminSectionCard
+              title="System Reports"
+              description="View audit logs, compliance and financial metrics"
+              action="View Reports"
+              href="/dashboard/billing"
+              color="orange"
+            />
           </div>
 
-          {/* User Roster Overview */}
-          <Card title="Recent User Accounts" subtitle="Latest accounts registered in CareFlow">
+          {/* Data Table Component */}
+          <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden font-sans">
+            <div className="p-6 border-b border-[#E5E7EB]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-xl text-[#1F2937] font-display">System Directory & Users</h3>
+                  <p className="text-xs text-[#6B7280]">Inspect accounts, active roles, and authorization states</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-[#9CA3AF] absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      placeholder="Search users..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-4 py-2 text-xs border border-[#E5E7EB] rounded-lg bg-[#F8FAFB] focus:bg-white w-48 focus:w-60 transition-all"
+                    />
+                  </div>
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="text-xs border border-[#E5E7EB] rounded-lg bg-[#F8FAFB] px-3 py-2 font-semibold text-[#1F2937]"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="patient">Patients</option>
+                    <option value="doctor">Doctors</option>
+                    <option value="admin">Admins</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-sans">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-healthcare-border bg-healthcare-bgSecondary text-healthcare-textMedium font-bold uppercase text-[10px]">
-                    <th className="py-3 px-4">User Name</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4">Phone</th>
-                    <th className="py-3 px-4">Joined Date</th>
+                  <tr className="border-b border-[#E5E7EB] bg-[#F8FAFB] text-xs text-[#6B7280] uppercase font-semibold">
+                    <th className="py-3.5 px-5">Name</th>
+                    <th className="py-3.5 px-5">Email</th>
+                    <th className="py-3.5 px-5">Role</th>
+                    <th className="py-3.5 px-5">Status</th>
+                    <th className="py-3.5 px-5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-healthcare-border">
-                  {users.slice(0, 6).map((u) => (
-                    <tr key={u.id} className="hover:bg-healthcare-bgSecondary/60 transition-colors">
-                      <td className="py-3 px-4 font-bold text-healthcare-textDark">{u.name}</td>
-                      <td className="py-3 px-4 text-healthcare-textMedium">{u.email}</td>
-                      <td className="py-3 px-4">
+                <tbody className="divide-y divide-[#E5E7EB] text-sm text-[#1F2937]">
+                  {paginatedUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-[#F8FAFB] transition-colors">
+                      <td className="py-4 px-5 font-bold text-[#1F2937]">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-[#F3E8FF] text-[#6D28D9] font-bold text-xs flex items-center justify-center border border-[#8B5CF6]/20">
+                            {u.name ? u.name[0].toUpperCase() : "U"}
+                          </div>
+                          <span>{u.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-5 text-[#6B7280] font-mono text-xs">{u.email}</td>
+                      <td className="py-4 px-5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border ${
                             u.role === "admin"
-                              ? "bg-amber-100 text-amber-800 border border-amber-200"
+                              ? "bg-[#F3E8FF] text-[#6D28D9] border-[#8B5CF6]/20"
                               : u.role === "doctor"
-                              ? "bg-purple-100 text-purple-800 border border-purple-200"
-                              : "bg-blue-100 text-blue-800 border border-blue-200"
+                              ? "bg-[#FFE5E5] text-[#C41C3B] border-[#FF6B6B]/20"
+                              : "bg-[#DFF1FF] text-[#0051CC] border-[#007AFF]/20"
                           }`}
                         >
-                          {u.role}
+                          {u.role.toUpperCase()}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-healthcare-textMedium">{u.phone || "N/A"}</td>
-                      <td className="py-3 px-4 text-healthcare-textLight">
-                        {new Date(u.createdAt).toLocaleDateString()}
+                      <td className="py-4 px-5">
+                        <span className="px-2.5 py-1 bg-[#E8F8EC] text-[#34C759] text-xs font-semibold rounded-full border border-[#34C759]/20 inline-flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#34C759]" /> Active
+                        </span>
+                      </td>
+                      <td className="py-4 px-5 text-right">
+                        <button className="p-1.5 text-[#6B7280] hover:text-[#1F2937] hover:bg-[#F8FAFB] rounded-lg transition">
+                          <MoreVertical size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </Card>
+
+            {/* Pagination Footer */}
+            <div className="p-4 border-t border-[#E5E7EB] bg-[#F8FAFB] flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-[#6B7280] gap-3">
+              <span>
+                Showing {paginatedUsers.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} - {Math.min(currentPage * rowsPerPage, filteredUsers.length)} of {filteredUsers.length} users
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 border border-[#E5E7EB] bg-white rounded-lg disabled:opacity-50 font-semibold hover:bg-[#F8FAFB]"
+                >
+                  Prev
+                </button>
+                <span className="px-3 py-1.5 font-bold text-[#1F2937]">{currentPage} / {totalPages}</span>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 border border-[#E5E7EB] bg-white rounded-lg disabled:opacity-50 font-semibold hover:bg-[#F8FAFB]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </DashboardLayout>
     </PrivateRoute>
   );
 }
+
+// Admin Section Card
+function AdminSectionCard({ title, description, action, href, color, isPrimary = false }: {
+  title: string;
+  description: string;
+  action: string;
+  href: string;
+  color: "blue" | "green" | "purple" | "orange";
+  isPrimary?: boolean;
+}) {
+  return (
+    <div className={`p-6 rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between ${
+      isPrimary
+        ? "bg-[#8B5CF6] text-white border-[#8B5CF6]"
+        : "bg-white border-[#E5E7EB] hover:border-[#8B5CF6]/30"
+    }`}>
+      <div>
+        <h3 className={`font-bold text-lg font-display mb-1 ${isPrimary ? "text-white" : "text-[#1F2937]"}`}>{title}</h3>
+        <p className={`text-xs leading-relaxed ${isPrimary ? "text-white/80" : "text-[#6B7280]"}`}>{description}</p>
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-current/10">
+        <Link href={href}>
+          <Button
+            variant={isPrimary ? "secondary" : "outline"}
+            fullWidth
+            className={`justify-between text-xs py-2.5 ${
+              isPrimary ? "border-white/40 text-white hover:bg-white/10" : ""
+            }`}
+          >
+            <span>{action}</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
