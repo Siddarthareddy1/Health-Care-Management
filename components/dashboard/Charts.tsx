@@ -25,11 +25,11 @@ const revenueData = [
 ];
 
 const specialtyData = [
-  { name: "Cardiology", consultations: 48, color: "#0F766E" },
-  { name: "Pediatrics", consultations: 34, color: "#0D9488" },
-  { name: "Orthopedics", consultations: 28, color: "#0284C7" },
-  { name: "Dermatology", consultations: 22, color: "#14B8A6" },
-  { name: "Neurology", consultations: 18, color: "#6366F1" },
+  { name: "Cardiology", consultations: 48, color: "#6366F1" },
+  { name: "Pediatrics", consultations: 34, color: "#8B5CF6" },
+  { name: "Orthopedics", consultations: 28, color: "#06B6D4" },
+  { name: "Dermatology", consultations: 22, color: "#EC4899" },
+  { name: "Neurology", consultations: 18, color: "#10B981" },
 ];
 
 export function RevenueChart() {
@@ -47,27 +47,28 @@ export function RevenueChart() {
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
           <defs>
-            <linearGradient id="colorRevenueTeal" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#0F766E" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="#0F766E" stopOpacity={0} />
+            <linearGradient id="colorRevenueIndigo" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+              <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-          <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} fontWeight={600} tickLine={false} />
-          <YAxis stroke="#94A3B8" fontSize={11} fontWeight={600} tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+          <XAxis dataKey="name" stroke="#64748B" fontSize={11} fontWeight={600} tickLine={false} />
+          <YAxis stroke="#64748B" fontSize={11} fontWeight={600} tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} />
           <Tooltip
             contentStyle={{ 
-              backgroundColor: "#FFFFFF", 
+              backgroundColor: "#0F172A", 
               borderRadius: "12px", 
-              border: "1px solid #E2E8F0",
-              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
+              border: "1px solid #1E293B",
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)",
+              color: "#FFFFFF",
               fontFamily: "Inter, sans-serif",
               fontSize: "12px",
               fontWeight: 600
             }}
             formatter={(value) => [`$${value}`, "Revenue"]}
           />
-          <Area type="monotone" dataKey="revenue" stroke="#0F766E" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenueTeal)" />
+          <Area type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenueIndigo)" />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -88,15 +89,16 @@ export function SpecialtyChart() {
     <div className="h-72 w-full font-sans">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={specialtyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-          <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} fontWeight={600} tickLine={false} />
-          <YAxis stroke="#94A3B8" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+          <XAxis dataKey="name" stroke="#64748B" fontSize={11} fontWeight={600} tickLine={false} />
+          <YAxis stroke="#64748B" fontSize={11} fontWeight={600} tickLine={false} axisLine={false} />
           <Tooltip
             contentStyle={{ 
-              backgroundColor: "#FFFFFF", 
+              backgroundColor: "#0F172A", 
               borderRadius: "12px", 
-              border: "1px solid #E2E8F0",
-              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
+              border: "1px solid #1E293B",
+              boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)",
+              color: "#FFFFFF",
               fontFamily: "Inter, sans-serif",
               fontSize: "12px",
               fontWeight: 600
@@ -112,4 +114,3 @@ export function SpecialtyChart() {
     </div>
   );
 }
-

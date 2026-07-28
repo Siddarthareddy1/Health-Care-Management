@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginSchema } from "../../lib/validators";
@@ -144,7 +144,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="space-y-5 font-sans text-healthcare-textDark">
+    <div className="space-y-5 font-sans text-slate-900">
       {/* Hidden reCAPTCHA anchor */}
       <div id="recaptcha-container"></div>
 
@@ -152,30 +152,28 @@ export default function LoginForm() {
       {loginMethod === "email" && (
         <form onSubmit={handleSubmit(onSubmitEmail)} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+            <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
               Email Address
             </label>
             <input
               type="email"
               placeholder="admin@healthcare.com or doctor@healthcare.com"
-              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white transition-all ${
-                errors.email ? "border-healthcare-error" : "border-healthcare-border"
-              }`}
+              className={`w-full ${errors.email ? "!border-red-500" : ""}`}
               {...register("email")}
             />
             {errors.email && (
-              <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.email.message}</p>
+              <p className="text-xs text-red-500 mt-1 font-semibold">{errors.email.message}</p>
             )}
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-bold text-healthcare-textDark">
+              <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider font-poppins">
                 Password
               </label>
               <Link
                 href="/auth/forgot-password"
-                className="text-xs text-healthcare-accent hover:underline font-semibold"
+                className="text-xs text-indigo-600 hover:underline font-semibold"
               >
                 Forgot Password?
               </Link>
@@ -183,13 +181,11 @@ export default function LoginForm() {
             <input
               type="password"
               placeholder="••••••••"
-              className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white transition-all ${
-                errors.password ? "border-healthcare-error" : "border-healthcare-border"
-              }`}
+              className={`w-full ${errors.password ? "!border-red-500" : ""}`}
               {...register("password")}
             />
             {errors.password && (
-              <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.password.message}</p>
+              <p className="text-xs text-red-500 mt-1 font-semibold">{errors.password.message}</p>
             )}
           </div>
 
@@ -205,7 +201,7 @@ export default function LoginForm() {
           {!otpSent ? (
             <form onSubmit={handleSendOtp} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
                   Mobile Phone Number
                 </label>
                 <input
@@ -213,10 +209,10 @@ export default function LoginForm() {
                   placeholder="+919876543210 (Must include country code)"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full px-3 py-2 border border-healthcare-border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white transition-all"
+                  className="w-full"
                 />
-                <p className="text-[10px] text-healthcare-textLight mt-1 font-medium">
-                  Enter your mobile phone starting with your country code (e.g., +91 for India, +1 for US).
+                <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                  Include country code (e.g., +91 for India, +1 for US).
                 </p>
               </div>
               <Button type="submit" variant="primary" fullWidth loading={loading}>
@@ -226,7 +222,7 @@ export default function LoginForm() {
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+                <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
                   Enter OTP Code
                 </label>
                 <input
@@ -235,18 +231,18 @@ export default function LoginForm() {
                   maxLength={6}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
-                  className="w-full px-3 py-2 border border-healthcare-border rounded-standard text-sm text-center font-mono font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white"
+                  className="w-full text-center font-mono font-bold tracking-widest"
                 />
                 <div className="flex justify-between items-center mt-1">
-                  <p className="text-[10px] text-healthcare-textMedium font-medium">
-                    Code sent to {phoneNumber} (Mock code is <span className="font-bold">123456</span>)
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Code sent to {phoneNumber} (Mock: <span className="font-bold">123456</span>)
                   </p>
                   <button
                     type="button"
                     onClick={() => setOtpSent(false)}
-                    className="text-[10px] text-healthcare-accent hover:underline font-bold"
+                    className="text-[10px] text-indigo-600 hover:underline font-bold"
                   >
-                    Change Phone Number
+                    Change Number
                   </button>
                 </div>
               </div>
@@ -260,9 +256,9 @@ export default function LoginForm() {
 
       {/* Social login divider */}
       <div className="relative flex items-center justify-center my-4">
-        <div className="flex-grow border-t border-healthcare-border"></div>
-        <span className="flex-shrink mx-4 text-xs font-bold text-healthcare-textMedium uppercase">Or connect with</span>
-        <div className="flex-grow border-t border-healthcare-border"></div>
+        <div className="flex-grow border-t border-slate-200"></div>
+        <span className="flex-shrink mx-4 text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Or connect with</span>
+        <div className="flex-grow border-t border-slate-200"></div>
       </div>
 
       <div className="space-y-2">
@@ -293,7 +289,7 @@ export default function LoginForm() {
             fullWidth
             className="font-semibold"
           >
-            Continue with Phone
+            Continue with Phone SMS
           </Button>
         ) : (
           <Button
@@ -309,9 +305,9 @@ export default function LoginForm() {
       </div>
 
       <div className="text-center pt-2">
-        <p className="text-sm text-healthcare-textMedium">
+        <p className="text-xs text-slate-600">
           Don&apos;t have an account?{" "}
-          <Link href="/auth/signup" className="text-healthcare-accent font-bold hover:underline">
+          <Link href="/auth/signup" className="text-indigo-600 font-bold hover:underline">
             Register here
           </Link>
         </p>

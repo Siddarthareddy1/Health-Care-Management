@@ -10,7 +10,7 @@ import Button from "../common/Button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { ShieldCheck, UserCheck } from "lucide-react";
+import { UserCheck } from "lucide-react";
 
 type SignupFormInputs = z.infer<typeof SignupSchema>;
 
@@ -47,104 +47,94 @@ export default function SignupForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 font-sans text-healthcare-textDark">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 font-sans text-slate-900">
       {/* Patient auto-role badge */}
-      <div className="bg-blue-50 border border-blue-200 rounded-standard p-3 flex items-center gap-3">
-        <UserCheck className="w-5 h-5 text-healthcare-primary flex-shrink-0" />
+      <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-3.5 flex items-center gap-3">
+        <UserCheck className="w-5 h-5 text-indigo-600 flex-shrink-0" />
         <div className="text-xs">
-          <p className="font-bold text-healthcare-primary">Patient Self-Registration</p>
-          <p className="text-healthcare-textMedium">
-            All public accounts are created securely as <span className="font-semibold text-healthcare-primary">Patient</span> profiles.
+          <p className="font-bold text-indigo-700 font-poppins">Patient Self-Registration</p>
+          <p className="text-slate-600">
+            All public accounts are created securely as <span className="font-semibold text-indigo-700">Patient</span> profiles.
           </p>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+        <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
           Full Name
         </label>
         <input
           type="text"
           placeholder="John Doe"
-          className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
-            errors.name ? "border-healthcare-error" : "border-healthcare-border"
-          }`}
+          className={`w-full ${errors.name ? "!border-red-500" : ""}`}
           {...register("name")}
         />
         {errors.name && (
-          <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.name.message}</p>
+          <p className="text-xs text-red-500 mt-1 font-semibold">{errors.name.message}</p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+        <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
           Email Address
         </label>
         <input
           type="email"
           placeholder="johndoe@example.com"
-          className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
-            errors.email ? "border-healthcare-error" : "border-healthcare-border"
-          }`}
+          className={`w-full ${errors.email ? "!border-red-500" : ""}`}
           {...register("email")}
         />
         {errors.email && (
-          <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.email.message}</p>
+          <p className="text-xs text-red-500 mt-1 font-semibold">{errors.email.message}</p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+        <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
           Phone Number
         </label>
         <input
           type="tel"
           placeholder="9876543210"
-          className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
-            errors.phone ? "border-healthcare-error" : "border-healthcare-border"
-          }`}
+          className={`w-full ${errors.phone ? "!border-red-500" : ""}`}
           {...register("phone")}
         />
         {errors.phone && (
-          <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.phone.message}</p>
+          <p className="text-xs text-red-500 mt-1 font-semibold">{errors.phone.message}</p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+        <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
           Password
         </label>
         <input
           type="password"
           placeholder="••••••••"
-          className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
-            errors.password ? "border-healthcare-error" : "border-healthcare-border"
-          }`}
+          className={`w-full ${errors.password ? "!border-red-500" : ""}`}
           {...register("password")}
         />
         {errors.password ? (
-          <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.password.message}</p>
+          <p className="text-xs text-red-500 mt-1 font-semibold">{errors.password.message}</p>
         ) : (
-          <p className="text-[10px] text-healthcare-textLight mt-1">
-            Must be at least 8 characters with 1 uppercase letter, 1 number, and 1 special character.
+          <p className="text-[11px] text-slate-400 mt-1 font-mono">
+            At least 8 chars (1 uppercase, 1 number, 1 special char).
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-healthcare-textDark mb-1">
+        <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-1 font-poppins">
           Confirm Password
         </label>
         <input
           type="password"
           placeholder="••••••••"
-          className={`w-full px-3 py-2 border rounded-standard text-sm focus:outline-none focus:ring-2 focus:ring-healthcare-primary bg-white ${
-            errors.confirmPassword ? "border-healthcare-error" : "border-healthcare-border"
-          }`}
+          className={`w-full ${errors.confirmPassword ? "!border-red-500" : ""}`}
           {...register("confirmPassword")}
         />
         {errors.confirmPassword && (
-          <p className="text-xs text-healthcare-error mt-1 font-semibold">{errors.confirmPassword.message}</p>
+          <p className="text-xs text-red-500 mt-1 font-semibold">{errors.confirmPassword.message}</p>
         )}
       </div>
 
@@ -153,21 +143,21 @@ export default function SignupForm() {
           type="checkbox"
           id="terms"
           required
-          className="mt-1 rounded border-healthcare-border text-healthcare-primary focus:ring-healthcare-primary"
+          className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
         />
-        <label htmlFor="terms" className="text-xs text-healthcare-textMedium leading-snug">
-          I agree to the <span className="font-bold text-healthcare-textDark">CareFlow Terms of Service</span> and <span className="font-bold text-healthcare-textDark">HIPAA Patient Privacy Notice</span>.
+        <label htmlFor="terms" className="text-xs text-slate-600 leading-snug">
+          I agree to the <span className="font-bold text-slate-900">CareFlow Terms of Service</span> and <span className="font-bold text-slate-900">HIPAA Patient Privacy Notice</span>.
         </label>
       </div>
 
-      <Button type="submit" variant="primary" fullWidth loading={loading}>
+      <Button type="submit" variant="primary" fullWidth loading={loading} className="mt-2">
         Register as Patient
       </Button>
 
       <div className="text-center pt-2">
-        <p className="text-sm text-healthcare-textMedium">
+        <p className="text-xs text-slate-600">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-healthcare-accent font-bold hover:underline">
+          <Link href="/auth/login" className="text-indigo-600 font-bold hover:underline">
             Login here
           </Link>
         </p>

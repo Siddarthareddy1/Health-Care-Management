@@ -3,21 +3,41 @@
 import React from "react";
 import LoginForm from "../../../components/auth/LoginForm";
 import Card from "../../../components/common/Card";
-import { Activity } from "lucide-react";
+import Link from "next/link";
+import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-healthcare-bgSecondary flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9] flex flex-col items-center justify-center p-4 font-sans text-[#0F172A]">
       <div className="w-full max-w-md">
-        <div className="flex justify-center gap-2 items-center mb-6">
-          <div className="bg-healthcare-primary text-white p-1.5 rounded-md">
-            <Activity className="w-5 h-5" />
+        {/* Brand Header */}
+        <div className="flex flex-col items-center mb-8 text-center">
+          <Link href="/" className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white flex items-center justify-center font-bold text-2xl shadow-lg shadow-indigo-500/25">
+              🏥
+            </div>
+            <span className="font-bold text-3xl text-[#0F172A] font-poppins tracking-tight">CareFlow</span>
+          </Link>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[#6366F1] text-xs font-bold font-mono">
+            <Sparkles className="w-3.5 h-3.5 text-[#EC4899]" /> Secure Enterprise Portal
           </div>
-          <span className="font-bold text-2xl text-healthcare-primary font-display tracking-tight">CareFlow</span>
         </div>
-        <Card title="Sign In to CareFlow" subtitle="Enter your email and password to continue.">
+
+        <Card title="Welcome Back" subtitle="Sign in to your patient, doctor, or admin account." hoverable={false} className="shadow-md border-[#E2E8F0]">
           <LoginForm />
         </Card>
+
+        {/* Demo Credentials Box */}
+        <div className="mt-6 p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs text-xs font-sans">
+          <p className="font-bold text-[#0F172A] font-poppins mb-2 flex items-center gap-1">
+            🔑 Quick Demo Accounts (Password: <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-mono">password123</code>):
+          </p>
+          <div className="space-y-1 text-[#475569]">
+            <p>• Admin: <span className="font-mono text-slate-900 font-semibold">admin@healthcare.com</span></p>
+            <p>• Doctor: <span className="font-mono text-slate-900 font-semibold">doctor@healthcare.com</span></p>
+            <p>• Patient: <span className="font-mono text-slate-900 font-semibold">patient@healthcare.com</span></p>
+          </div>
+        </div>
       </div>
     </div>
   );
