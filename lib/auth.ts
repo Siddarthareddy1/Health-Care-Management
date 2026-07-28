@@ -6,13 +6,14 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  RecaptchaVerifier,
   signInWithPhoneNumber,
-  sendEmailVerification
+  sendEmailVerification,
+  updatePassword as firebaseUpdatePassword,
+  deleteUser as firebaseDeleteUser
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "./firebase";
-import { User, UserRole } from "../types";
+import { User, UserRole, UserStatus, Doctor } from "../types";
 import { sendEmailNotification } from "./email";
 
 const USERS_KEY = "hms_users";
@@ -39,13 +40,35 @@ export const getLocalCurrentUser = (): User | null => {
 
 export const getUserById = async (userId: string): Promise<User | null> => {
   if (isFirebaseConfigured && db) {
-    const docRef = doc(db, "users", userId);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? (docSnap.data() as User) : null;
+    try {
+      const docRef = doc(db, "users", userId);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? (docSnap.data() as User) : null;
+    } catch {
+      const users = getLocalUsers();
+      return users.find(u => u.id === userId) || null;
+    }
   } else {
     const users = getLocalUsers();
     return users.find(u => u.id === userId) || null;
   }
+};
+
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  const normalizedEmail = email.toLowerCase().trim();
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "users"), where("email", "==", normalizedEmail));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        return querySnap.docs[0].data() as User;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  const users = getLocalUsers();
+  return users.find(u => u.email.toLowerCase() === normalizedEmail) || null;
 };
 
 // Seed demo users
@@ -60,6 +83,7 @@ const ensureSeedUsers = () => {
         name: "Dr. Siddartha Reddy",
         role: "admin",
         phone: "9876543210",
+        status: "active",
         avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -70,6 +94,7 @@ const ensureSeedUsers = () => {
         name: "Dr. Sarah Jenkins",
         role: "doctor",
         phone: "9876543211",
+        status: "active",
         avatar: "https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=200",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -80,6 +105,7 @@ const ensureSeedUsers = () => {
         name: "John Doe",
         role: "patient",
         phone: "9876543212",
+        status: "active",
         avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -95,7 +121,6 @@ const ensureSeedUsers = () => {
     localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
     saveLocalUsers(seed);
 
-    // Seed empty patients list, doctors, etc. if empty
     if (!localStorage.getItem("hms_patients")) {
       localStorage.setItem("hms_patients", JSON.stringify([
         {
@@ -129,7 +154,7 @@ const ensureSeedUsers = () => {
             "Monday": [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
             "Tuesday": [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
             "Wednesday": [{ start: "09:00", end: "12:00" }],
-            "Thursday": [{ start: "09:00", end: "12:00" }, { start: "14:00", end: "17:00" }],
+            "Thursday": [{ start: "09:00", end: "17:00" }],
             "Friday": [{ start: "09:00", end: "12:00" }]
           },
           consultationFee: 150,
@@ -144,36 +169,41 @@ if (typeof window !== "undefined") {
   ensureSeedUsers();
 }
 
-// Helper to fetch user role from Firestore
 export const getUserRole = async (userId: string): Promise<UserRole | null> => {
   const user = await getUserById(userId);
   return user ? user.role : null;
 };
 
-// Authentication API methods
-// Public registration: ALWAYS assigns role "patient" (hardcoded for security)
+// Public registration: ALWAYS assigns role "patient"
 export const signUp = async (email: string, password: string, name: string, phone: string, roleInput?: UserRole): Promise<User> => {
-  // Public registration is ALWAYS forced to "patient" regardless of input
-  const role: UserRole = "patient";
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // Check email uniqueness
+  const existing = await getUserByEmail(normalizedEmail);
+  if (existing) {
+    throw new Error("Email already exists. An account with this email is already registered.");
+  }
+
+  if (password.length < 8) {
+    throw new Error("Password must be at least 8 characters long.");
+  }
 
   if (isFirebaseConfigured && auth && db) {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
     const userId = userCredential.user.uid;
     
     const userData: User = {
       id: userId,
-      email,
+      email: normalizedEmail,
       name,
       phone,
       role: "patient",
+      status: "active",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    // Store in Firestore
     await setDoc(doc(db, "users", userId), userData);
-
-    // Seed patient profile record in Firestore
     await setDoc(doc(db, "patients", userId), {
       id: userId,
       userId,
@@ -186,17 +216,15 @@ export const signUp = async (email: string, password: string, name: string, phon
       createdAt: new Date().toISOString(),
     });
 
-    // Try sending email verification
     try {
       await sendEmailVerification(userCredential.user);
     } catch (err) {
       console.warn("Failed to dispatch Firebase email verification:", err);
     }
 
-    // Trigger Registration Email Notification
     sendEmailNotification({
       template: "REGISTRATION_SUCCESS",
-      recipientEmail: email,
+      recipientEmail: normalizedEmail,
       recipientName: name,
       variables: { role: "patient" }
     });
@@ -205,17 +233,18 @@ export const signUp = async (email: string, password: string, name: string, phon
   } else {
     // Mock Signup
     const users = getLocalUsers();
-    if (users.some(u => u.email === email)) {
-      throw new Error("Email already in use");
+    if (users.some(u => u.email.toLowerCase() === normalizedEmail)) {
+      throw new Error("Email already exists. An account with this email is already registered.");
     }
 
     const userId = "mock-" + Math.random().toString(36).substr(2, 9);
     const userData: User = {
       id: userId,
-      email,
+      email: normalizedEmail,
       name,
       phone,
       role: "patient",
+      status: "active",
       avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -225,10 +254,9 @@ export const signUp = async (email: string, password: string, name: string, phon
     saveLocalUsers(users);
 
     const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
-    passwords[email] = password;
+    passwords[normalizedEmail] = password;
     localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
 
-    // Seed patient in localStorage
     const patients = JSON.parse(localStorage.getItem("hms_patients") || "[]");
     patients.push({
       id: userId,
@@ -245,10 +273,9 @@ export const signUp = async (email: string, password: string, name: string, phon
 
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
 
-    // Trigger Registration Email Notification for Mock mode
     sendEmailNotification({
       template: "REGISTRATION_SUCCESS",
-      recipientEmail: email,
+      recipientEmail: normalizedEmail,
       recipientName: name,
       variables: { role: "patient" }
     });
@@ -261,11 +288,13 @@ export const registerPatient = async (email: string, password: string, name: str
   return signUp(email, password, name, phone, "patient");
 };
 
-// Admin ONLY: Create Doctor Account
+// Admin ONLY: Create Doctor Account with custom Password
 export interface CreateDoctorData {
   email: string;
   name: string;
   phone: string;
+  password?: string;
+  confirmPassword?: string;
   specialization: string;
   licenseNumber: string;
   experience: number;
@@ -276,29 +305,46 @@ export interface CreateDoctorData {
 export const createDoctorAccount = async (
   adminUID: string,
   data: CreateDoctorData
-): Promise<{ doctor: User; temporaryPassword: string }> => {
-  // Generate random strong temporary password
-  const temporaryPassword = `Doc#${Math.floor(100000 + Math.random() * 900000)}!`;
+): Promise<{ doctor: User; passwordAssigned: string }> => {
+  const normalizedEmail = data.email.toLowerCase().trim();
+
+  // Validate Email Uniqueness
+  const existingUser = await getUserByEmail(normalizedEmail);
+  if (existingUser) {
+    throw new Error("Email already exists. A doctor or user with this email is already registered.");
+  }
+
+  // Password validation
+  const passwordAssigned = data.password && data.password.trim() !== "" 
+    ? data.password 
+    : `Doc#${Math.floor(100000 + Math.random() * 900000)}!`;
+
+  if (data.password && data.confirmPassword && data.password !== data.confirmPassword) {
+    throw new Error("Passwords do not match. Please verify password entries.");
+  }
+
+  if (passwordAssigned.length < 8) {
+    throw new Error("Password must be at least 8 characters long.");
+  }
 
   if (isFirebaseConfigured && auth && db) {
-    const userCredential = await createUserWithEmailAndPassword(auth, data.email, temporaryPassword);
+    const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, passwordAssigned);
     const doctorUid = userCredential.user.uid;
 
     const doctorUserData: User & { createdByAdmin?: string } = {
       id: doctorUid,
-      email: data.email,
+      email: normalizedEmail,
       name: data.name,
       phone: data.phone,
       role: "doctor",
+      status: "active",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdByAdmin: adminUID,
     };
 
-    // Store in Firestore users collection
     await setDoc(doc(db, "users", doctorUid), doctorUserData);
 
-    // Store in Firestore doctors collection
     await setDoc(doc(db, "doctors", doctorUid), {
       id: doctorUid,
       userId: doctorUid,
@@ -319,21 +365,22 @@ export const createDoctorAccount = async (
       createdAt: new Date().toISOString()
     });
 
-    return { doctor: doctorUserData, temporaryPassword };
+    return { doctor: doctorUserData, passwordAssigned };
   } else {
     // Mock Doctor Creation
     const users = getLocalUsers();
-    if (users.some(u => u.email === data.email)) {
-      throw new Error("Doctor email already in use");
+    if (users.some(u => u.email.toLowerCase() === normalizedEmail)) {
+      throw new Error("Email already exists. A doctor with this email is already registered.");
     }
 
     const doctorUid = "doc-" + Math.random().toString(36).substr(2, 9);
     const doctorUserData: User & { createdByAdmin?: string } = {
       id: doctorUid,
-      email: data.email,
+      email: normalizedEmail,
       name: data.name,
       phone: data.phone,
       role: "doctor",
+      status: "active",
       avatar: "https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=200",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -344,7 +391,7 @@ export const createDoctorAccount = async (
     saveLocalUsers(users);
 
     const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
-    passwords[data.email] = temporaryPassword;
+    passwords[normalizedEmail] = passwordAssigned;
     localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
 
     const doctors = JSON.parse(localStorage.getItem("hms_doctors") || "[]");
@@ -369,21 +416,31 @@ export const createDoctorAccount = async (
     });
     localStorage.setItem("hms_doctors", JSON.stringify(doctors));
 
-    return { doctor: doctorUserData, temporaryPassword };
+    return { doctor: doctorUserData, passwordAssigned };
   }
 };
 
 export const signIn = async (email: string, password: string): Promise<User> => {
+  const normalizedEmail = email.toLowerCase().trim();
+
   if (isFirebaseConfigured && auth && db) {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
       const userId = userCredential.user.uid;
       const docRef = doc(db, "users", userId);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
-        throw new Error("User record not found in Firestore database");
+        throw new Error("User record not found in database.");
       }
-      return docSnap.data() as User;
+      const userData = docSnap.data() as User;
+      
+      // Check status
+      if (userData.status === "inactive") {
+        await firebaseSignOut(auth);
+        throw new Error("Your account has been deactivated by administration. Please contact support.");
+      }
+
+      return userData;
     } catch (e: any) {
       if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential" || e.code === "auth/wrong-password" || e.message?.includes("not found")) {
         const seedUsers = [
@@ -410,7 +467,7 @@ export const signIn = async (email: string, password: string): Promise<User> => 
           }
         ];
 
-        const matchingSeed = seedUsers.find(u => u.email === email && u.password === password);
+        const matchingSeed = seedUsers.find(u => u.email === normalizedEmail && u.password === password);
         if (matchingSeed) {
           try {
             const user = await signUp(matchingSeed.email, matchingSeed.password, matchingSeed.name, matchingSeed.phone, matchingSeed.role);
@@ -426,10 +483,16 @@ export const signIn = async (email: string, password: string): Promise<User> => 
     // Mock Login
     const users = getLocalUsers();
     const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
-    const user = users.find(u => u.email === email);
-    if (!user || passwords[email] !== password) {
-      throw new Error("Invalid email or password");
+    const user = users.find(u => u.email.toLowerCase() === normalizedEmail);
+
+    if (!user || passwords[normalizedEmail] !== password) {
+      throw new Error("Invalid email or password.");
     }
+
+    if (user.status === "inactive") {
+      throw new Error("Your account has been deactivated by administration. Please contact support.");
+    }
+
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
     return user;
   }
@@ -443,26 +506,90 @@ export const signOut = async (): Promise<void> => {
   }
 };
 
-export const resetPassword = async (email: string): Promise<void> => {
+// Reset / Change Password functions
+export const updateUserPassword = async (email: string, currentPass: string, newPass: string): Promise<void> => {
+  const normalizedEmail = email.toLowerCase().trim();
+  if (newPass.length < 8) {
+    throw new Error("New password must be at least 8 characters long.");
+  }
+
+  if (isFirebaseConfigured && auth && auth.currentUser) {
+    await firebaseUpdatePassword(auth.currentUser, newPass);
+  } else {
+    const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
+    if (passwords[normalizedEmail] && passwords[normalizedEmail] !== currentPass) {
+      throw new Error("Current password is incorrect.");
+    }
+    passwords[normalizedEmail] = newPass;
+    localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
+  }
+};
+
+// Admin Reset Password for any user/doctor
+export const adminResetUserPassword = async (email: string, newPass: string): Promise<void> => {
+  const normalizedEmail = email.toLowerCase().trim();
+  if (newPass.length < 8) {
+    throw new Error("New password must be at least 8 characters long.");
+  }
+
   if (isFirebaseConfigured && auth) {
-    await sendPasswordResetEmail(auth, email);
+    await sendPasswordResetEmail(auth, normalizedEmail);
+  } else {
+    const passwords = JSON.parse(localStorage.getItem(PASSWORDS_KEY) || "{}");
+    passwords[normalizedEmail] = newPass;
+    localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords));
+  }
+};
+
+// Toggle Doctor/User Status (Active / Inactive)
+export const toggleUserStatus = async (userId: string, status: UserStatus): Promise<void> => {
+  if (isFirebaseConfigured && db) {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, { status, updatedAt: new Date().toISOString() });
+  } else {
+    const users = getLocalUsers();
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx >= 0) {
+      users[idx].status = status;
+      users[idx].updatedAt = new Date().toISOString();
+      saveLocalUsers(users);
+    }
+  }
+};
+
+// Delete Doctor Account
+export const deleteDoctorAccount = async (doctorId: string): Promise<void> => {
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, "users", doctorId));
+    await deleteDoc(doc(db, "doctors", doctorId));
+  } else {
+    const users = getLocalUsers().filter(u => u.id !== doctorId);
+    saveLocalUsers(users);
+
+    const doctors = JSON.parse(localStorage.getItem("hms_doctors") || "[]").filter((d: any) => d.id !== doctorId && d.userId !== doctorId);
+    localStorage.setItem("hms_doctors", JSON.stringify(doctors));
+  }
+};
+
+export const resetPassword = async (email: string): Promise<void> => {
+  const normalizedEmail = email.toLowerCase().trim();
+  if (isFirebaseConfigured && auth) {
+    await sendPasswordResetEmail(auth, normalizedEmail);
     sendEmailNotification({
       template: "PASSWORD_RESET",
-      recipientEmail: email,
+      recipientEmail: normalizedEmail,
       recipientName: "User",
       variables: {}
     });
   } else {
     const users = getLocalUsers();
-    const userRecord = users.find(u => u.email === email);
+    const userRecord = users.find(u => u.email.toLowerCase() === normalizedEmail);
     if (!userRecord) {
-      throw new Error("User with this email does not exist");
+      throw new Error("User with this email does not exist.");
     }
-    // Simulation: Log to console
-    console.log(`[Mock Reset] Password reset email sent to ${email}`);
     sendEmailNotification({
       template: "PASSWORD_RESET",
-      recipientEmail: email,
+      recipientEmail: normalizedEmail,
       recipientName: userRecord.name,
       variables: {}
     });
@@ -488,7 +615,6 @@ export const subscribeToAuth = (callback: (user: User | null) => void): (() => v
       }
     });
   } else {
-    // Mock Listener
     let lastUser = getLocalCurrentUser();
     callback(lastUser);
 
@@ -521,6 +647,7 @@ export const signInWithGoogle = async (): Promise<User> => {
         email: fbUser.email || "",
         name: fbUser.displayName || "Google User",
         role: "patient",
+        status: "active",
         phone: fbUser.phoneNumber || "",
         avatar: fbUser.photoURL || "",
         createdAt: new Date().toISOString(),
@@ -528,7 +655,6 @@ export const signInWithGoogle = async (): Promise<User> => {
       };
       await setDoc(docRef, userData);
       
-      // Seed patient profile
       await setDoc(doc(db, "patients", fbUser.uid), {
         id: fbUser.uid,
         userId: fbUser.uid,
@@ -541,7 +667,6 @@ export const signInWithGoogle = async (): Promise<User> => {
         createdAt: new Date().toISOString(),
       });
 
-      // Trigger Registration Email Notification
       sendEmailNotification({
         template: "REGISTRATION_SUCCESS",
         recipientEmail: userData.email,
@@ -552,7 +677,6 @@ export const signInWithGoogle = async (): Promise<User> => {
       return userData;
     }
   } else {
-    // Mock Google Sign-In
     const users = getLocalUsers();
     let user = users.find(u => u.email === "patient@healthcare.com");
     if (!user) {
@@ -561,6 +685,7 @@ export const signInWithGoogle = async (): Promise<User> => {
         email: "patient@healthcare.com",
         name: "John Doe",
         role: "patient",
+        status: "active",
         phone: "9876543212",
         avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
         createdAt: new Date().toISOString(),
@@ -577,8 +702,6 @@ export const sendPhoneOtp = async (phoneNumber: string, verifier: any): Promise<
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
     return confirmationResult;
   } else {
-    // Mock Phone SMS code
-    console.log(`[Mock OTP] SMS verification code sent to ${phoneNumber}`);
     return {
       confirm: async (code: string) => {
         if (code !== "123456") {
@@ -592,6 +715,7 @@ export const sendPhoneOtp = async (phoneNumber: string, verifier: any): Promise<
             email: "phoneuser@healthcare.com",
             name: "SMS User",
             role: "patient",
+            status: "active",
             phone: phoneNumber,
             avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
             createdAt: new Date().toISOString(),
@@ -600,7 +724,6 @@ export const sendPhoneOtp = async (phoneNumber: string, verifier: any): Promise<
           users.push(user);
           saveLocalUsers(users);
 
-          // Trigger Registration Email Notification for Mock
           sendEmailNotification({
             template: "REGISTRATION_SUCCESS",
             recipientEmail: user.email,
@@ -627,6 +750,7 @@ export const verifyPhoneOtpProfile = async (uid: string, phoneNumber: string): P
         email: "phoneuser@healthcare.com",
         name: "SMS User",
         role: "patient",
+        status: "active",
         phone: phoneNumber,
         avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200",
         createdAt: new Date().toISOString(),
@@ -645,7 +769,6 @@ export const verifyPhoneOtpProfile = async (uid: string, phoneNumber: string): P
         createdAt: new Date().toISOString(),
       });
 
-      // Trigger Registration Email Notification
       sendEmailNotification({
         template: "REGISTRATION_SUCCESS",
         recipientEmail: userData.email,

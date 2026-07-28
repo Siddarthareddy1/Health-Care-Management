@@ -1,4 +1,5 @@
 export type UserRole = "patient" | "doctor" | "admin";
+export type UserStatus = "active" | "inactive";
 
 export interface User {
   id: string;
@@ -6,6 +7,7 @@ export interface User {
   name: string;
   role: UserRole;
   phone: string;
+  status?: UserStatus;
   avatar?: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
