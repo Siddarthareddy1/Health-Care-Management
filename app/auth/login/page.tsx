@@ -26,18 +26,6 @@ export default function LoginPage() {
         <Card title="Welcome Back" subtitle="Sign in to your patient, doctor, or admin account." hoverable={false} className="shadow-md border-[#E2E8F0]">
           <LoginForm />
         </Card>
-
-        {/* Demo Credentials Box */}
-        <div className="mt-6 p-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs text-xs font-sans">
-          <p className="font-bold text-[#0F172A] font-poppins mb-2 flex items-center gap-1">
-            🔑 Quick Demo Accounts (Password: <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-mono">password123</code>):
-          </p>
-          <div className="space-y-1 text-[#475569]">
-            <p>• Admin: <span className="font-mono text-slate-900 font-semibold">admin@healthcare.com</span></p>
-            <p>• Doctor: <span className="font-mono text-slate-900 font-semibold">doctor@healthcare.com</span></p>
-            <p>• Patient: <span className="font-mono text-slate-900 font-semibold">patient@healthcare.com</span></p>
-          </div>
-        </div>
       </div>
     </div>
   );
